@@ -2,7 +2,7 @@
 
 Version: **1.0.0**  
 Date: **2026-10-31**  
-Status: **Draft — ready for review**  
+Status: **accepted**  
 Document ID: **D3**  
 Baselines: **Document 1 v1.1.0; Document 2 v1.0.1**  
 Delivery: **41 dependency-ordered work packages for the complete private pilot. No application implementation is included.**
@@ -1081,5 +1081,3 @@ Use explicit net EUR revenue and supplied dated FX for any converted cost compar
 Before accepting the completed implementation, verify: every package is integrated; dependency order and runtime-prerequisite ledger remain true; every S01–S14/module/trace has actual callers and current evidence; no acceptance test manufactured the state it claimed to produce; and no dependency/model/privacy limit was silently changed. Repeat affected traces when a material contract or persistence/Auth profile changes. Preserve private evidence via opaque IDs, never copied credentials or manuscripts.
 
 **Status of this document delivery:** the roadmap's package sequence, dependency graph, section references, paths, coverage and caller/process-state traces have been reviewed as documentation. The companion D2 correction closes the identified admission, probe, encryption, hosted-restore and reporting-input gaps. There is no application implementation here; no application test, deployment, real model generation, SMTP delivery or restore rehearsal is represented as already passed. Those are the explicit execution gates above.
-
-Review this roadmap. I will revise on request.
