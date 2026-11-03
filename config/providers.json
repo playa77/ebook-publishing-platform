@@ -1,0 +1,28 @@
+{
+  "text": {
+    "baseUrl": "https://eu.openrouter.ai/api/v1",
+    "model": "mistralai/mistral-large-4-0",
+    "providerOnly": ["mistral"],
+    "providerFallbacks": false,
+    "dataCollection": "deny",
+    "zdr": true,
+    "maxInputUsdPerMillion": "770000",
+    "maxOutputUsdPerMillion": "2310000",
+    "gatewayFeeBps": 800,
+    "contextTokenLimit": 131072,
+    "approvedEvidenceId": "pending-local-approval"
+  },
+  "image": {
+    "baseUrl": "https://api.eu.bfl.ai",
+    "path": "/v1/flux-2-pro",
+    "width": 1600,
+    "height": 2560,
+    "outputFormat": "jpeg",
+    "firstMpUsd": "30000",
+    "additionalMpUsd": "15000",
+    "gatewayFeeBps": 0,
+    "allowedPollHosts": [],
+    "allowedAssetHosts": [],
+    "approvedEvidenceId": "pending-local-approval"
+  }
+}

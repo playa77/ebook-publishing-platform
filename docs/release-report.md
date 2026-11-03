@@ -12,7 +12,8 @@ executed is listed as missing, not inferred.
 | Reproducible install | `npm ci` exit 0, lock committed | pass (local) |
 | Strict typing | `npm run typecheck` exit 0 | pass (local) |
 | Lint | `npm run lint` exit 0 | pass (local) |
-| Unit tests | 9/9 passing (toolchain) | pass (local) |
+| Unit tests | 44/44 passing (toolchain, contracts, policy) | pass (local) |
+| Closed schemas | Fixed model, privacy filters, cover cap and run scope reject relaxation | pass (local) |
 | Production build | `npm run build` exit 0 | pass (local) |
 | Local Auth/DB/Storage | Not provisioned | missing (WP-03) |
 | Boundary fakes | Not implemented | missing (WP-03) |
@@ -36,7 +37,10 @@ executed is listed as missing, not inferred.
   this repository. Affected probe/admission contracts were not invented;
   they remain blocked until the revised documents are supplied.
 - The fixed model, privacy filters, cover cap, and run-scope bounds are
-  not yet implemented; they belong to WP-02 and later packages.
+  encoded as closed schemas and covered by unit tests. A submitted
+  command body cannot relax them.
+- WP-02 is complete against D2 v1.0.0. Probe/admission contracts from
+  D2 v1.0.1 §13.4 are absent and were not invented.
 
 ## Release decision
 

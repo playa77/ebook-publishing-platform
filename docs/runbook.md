@@ -72,8 +72,93 @@ rule was used.
   was invented here.
 - `package-lock.json` is committed. `npm ci` is the reproducible install
   path.
+- **Activating the pinned runtime on this host:** the global mise
+  configuration selects Node LTS, so `.node-version` alone did not switch
+  the shell. Use `mise exec node@26.13.0 -- npm <command>` or prepend
+  `$HOME/.local/share/mise/installs/node/26.13.0/bin` to `PATH`.
+  `engine-strict=true` rejects an older runtime.
 
 ### Next eligible package
 
 WP-03 (local services, boundary harness, tool/font/validator locking).
 WP-04–WP-07 remain sequential after it.
+
+## WP-02 — Closed contracts, policies and errors
+
+**Status:** complete against D2 v1.0.0. The probe/admission variants that
+D3 cites from D2 v1.0.1 are **not** implemented because the cited
+sections are absent from this repository.
+**Depends on:** WP-01.
+
+### Touched
+
+`src/contracts/domain.ts`, `src/contracts/operations.ts`,
+`src/contracts/ports.ts`, `src/contracts/errors.ts`,
+`src/config/schema.ts`, `config/providers.json`,
+`config/pilot-policy.json`, `config/fonts.json`,
+`config/release-evidence.json`, `src/formats/editor.ts`,
+`src/i18n/de.ts`, `tests/unit/contracts.test.ts`,
+`tests/unit/policy.test.ts`, and this handoff.
+
+### Implemented
+
+- Closed primitives (`Id`, `Time`, `DateKey`, `Hash`, `Url`, `Usd`,
+  `Bps`, `Rev`), `Actor` (including the verified-subject identity
+  variant), `CallContext`, `Guard`, `CommitReceipt`.
+- All D2 v1.0.0 row schemas, views, model replies, snapshots, job
+  payloads, command/query unions, internal commands, step mutations and
+  CLI commands. Internal op IDs are excluded from public decoding.
+- Fixed provider policy: `mistralai/mistral-large-4-0`, EU base URL,
+  `providerOnly: ["mistral"]`, no fallback, `data_collection: deny`,
+  ZDR, $0.77/M input and $2.31/M output ceilings, 800 bps fee.
+- Exact pilot policy defaults from D2 §16.3, including the $5 account /
+  $50 organization caps, $1 cover allocation, one-chapter forward bound,
+  repair limits, import bounds and lease timings.
+- Fake/live release-evidence schema branch, provider approvals matched by
+  canonical policy hash, font completeness, human-quality gates, and
+  pilot admission that fails closed on fake evidence.
+- Conservative reservation arithmetic: UTF-8 byte cap plus token
+  overhead, ceiling rounding, gateway fee, 4-MP image reservation
+  ($0.075 per request, $0.90 for twelve).
+- Restricted editor document schema (no HTML, links, remote images,
+  scripts, custom marks or unknown keys), deterministic serialization,
+  and `countWords` using `Intl.Segmenter("de", {granularity:"word"})`
+  with outline-generated headings excluded.
+- All 51 fault codes mapped to German messages, retry semantics and HTTP
+  statuses; unknown exceptions become a generic `INTERNAL_ERROR` with no
+  vendor or prompt text.
+
+### Verification (executed 2026-11-03)
+
+| Command | Result |
+|---|---|
+| `npm ci` | exit 0 after adding WP-02 files; no invalid peers |
+| `npm run lint` | exit 0 |
+| `npm run typecheck` | exit 0 |
+| `npm run test:unit` | 3 files, 44 tests, all passed |
+| `npm run build` | exit 0 |
+
+### Contract gaps and decisions
+
+- **Missing revised documents:** D3 references D1 v1.1.0 and D2 v1.0.1
+  (§13.4 staged admission, §16.6, seams M26/T21, `SyntheticProbeRow`).
+  Those files are not present. The probe types, `probeStart` /
+  `probeAdvance` commands and staged admission were deliberately not
+  invented. WP-06/WP-33 will require the revised documents.
+- **BFL contract:** implemented from D2 v1.0.0 §4.2 (EU host, exact
+  model path, 1600×2560 JPEG, no `n` field, no extra gateway fee), not
+  from the absent D1 v1.1.0.
+- **`CommandRecord`:** defined as a TypeScript record at the persistence
+  seam. Its runtime schema and table land with WP-07, where idempotency
+  is implemented.
+- **Port signatures:** asynchronous I/O ports return `Promise<Outcome<…>>`
+  even though D2's notation omits `Promise`; this is the TypeScript
+  representation of the declared signatures, not an added capability.
+- **`planning.edit`:** carries the closed `Outline | Style` union, not an
+  arbitrary JSON bag.
+
+### Next eligible package
+
+WP-03. WP-04–WP-07 remain sequential; WP-06 is blocked on the missing
+`SyntheticProbeRow` definition only for that table, not for the rest of
+the export/operations schema.
