@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+.env*
+!.env.example
+private-evidence/
+dumps/
+backups/
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+npm-debug.log*
+supabase/.temp/
