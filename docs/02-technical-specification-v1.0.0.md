@@ -2,7 +2,7 @@
 
 Version: **1.0.0**  
 Date: **2026-10-31**  
-Status: **Draft — awaiting operator review**  
+Status: **accepted**  
 Document ID: **D2**  
 Design baseline: **Document 1 v1.1.0**  
 Delivery: **Implementable private pilot; production activation requires the explicit readiness evidence in §13.**
