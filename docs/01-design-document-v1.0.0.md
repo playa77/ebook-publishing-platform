@@ -593,5 +593,3 @@ External capabilities and prices were checked on 2026-10-31. Recheck mutable pri
 - [EPUBCheck conformance checker](https://www.w3.org/publishing/epubcheck/)
 - [KDP supported ebook formats](https://kdp.amazon.com/en_US/help/topic/G200634390?channel=null), [cover guidelines](https://kdp.amazon.com/en_US/help/topic/G6GTK3T3NUHKLEFX), [AI-content disclosure](https://kdp.amazon.com/en_US/help/topic/G200644110)
 - [EDPB international-transfer guidance](https://www.edpb.europa.eu/sme/be-compliant/international-data-transfers_en)
-
-Review this and let me know when you're ready for Document 2.
