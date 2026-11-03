@@ -2,7 +2,7 @@
 
 Version: **1.0.0**  
 Date: **2026-10-31**  
-Status: **Draft — awaiting operator review**  
+Status: **accepted**  
 Document ID: **D1**  
 Scope: **Private pilot, with explicit boundaries for a later paid service**
 
