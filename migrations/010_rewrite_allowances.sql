@@ -35,3 +35,4 @@ BEGIN
  INSERT INTO app.reservations(attempt_id,owner_id,project_id,deletion_pseudonym,run_id,period,amount,actual,fee,state,rate_policy_hash) VALUES(a.id,a.owner_id,a.project_id,NULL,run_id,period,amount,NULL,NULL,'held',rate_hash) RETURNING * INTO result;
  RETURN result;
 END $$;
+
