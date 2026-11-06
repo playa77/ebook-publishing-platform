@@ -185,6 +185,7 @@ export const modelStageSchema = z.enum([
   "expand",
   "normalize",
   "seed",
+  "preflight",
   "draft",
   "review",
   "extract",
@@ -192,6 +193,16 @@ export const modelStageSchema = z.enum([
   "reconcile",
 ]);
 export type ModelStage = z.infer<typeof modelStageSchema>;
+
+export const textRoleSchema = z.enum(["orchestrator", "writer"]);
+export type TextRole = z.infer<typeof textRoleSchema>;
+export const reasoningModeSchema = z.enum(["off", "low", "high", "max"]);
+export type ReasoningMode = z.infer<typeof reasoningModeSchema>;
+export const reasoningCapabilitySchema = z.strictObject({
+  mode: reasoningModeSchema, parameter: text(100), value: text(100),
+  billableWithinCompletionCap: z.literal(true),
+});
+export type ReasoningCapability = z.infer<typeof reasoningCapabilitySchema>;
 
 // ---------------------------------------------------------------------------
 // Identity, guards and receipts (§5.1, §16.5)
@@ -506,11 +517,47 @@ export const issueSchema = z.strictObject({
   spans: z.array(textSpanSchema).max(100),
   factIds: z.array(idSchema).max(100),
   suggestedUnitIds: z.array(idSchema).max(100),
+  constraintIds: z.array(idSchema).max(100),
+  sourceRefs: z.array(sourceRefSchema).max(100),
+  disposition: z.enum(["open", "resolved", "retired"]),
 });
 export type Issue = z.infer<typeof issueSchema>;
 
+const decimalSchema = z.string().regex(/^-?(0|[1-9]\d*)(\.\d+)?$/);
+export const exactPredicateSchema = z.discriminatedUnion("kind", [
+  z.strictObject({kind:z.literal("word_bounds"),min:revSchema,max:revSchema}).refine(v=>v.min<=v.max),
+  z.strictObject({kind:z.literal("forbidden_term"),term:text(1000),caseSensitive:z.boolean()}),
+  z.strictObject({kind:z.literal("required_value"),field:z.enum(["pov","location","storyTime","tense"]),value:text(4000)}),
+  z.strictObject({kind:z.literal("resource_transition"),factId:idSchema,before:decimalSchema,delta:decimalSchema,after:decimalSchema}),
+  z.strictObject({kind:z.literal("knowledge_gate"),factId:idSchema,knownFromOrdinal:revSchema}),
+]);
+export type ExactPredicate = z.infer<typeof exactPredicateSchema>;
+export const constraintSchema = z.strictObject({
+  id:idSchema,source:sourceRefSchema,sourceSpan:text(20000),scopeUnitIds:z.array(idSchema),
+  knownFromOrdinal:revSchema.optional(),dueOrdinal:revSchema.optional(),severity:z.enum(["blocking","warning"]),
+  kind:z.enum(["exact","semantic"]),obligation:text(8000),predicate:exactPredicateSchema.optional(),resolutionId:idSchema.optional(),
+}).refine(v=>(v.kind==="exact") === (v.predicate!==undefined),"Exakte Regeln benötigen ein Prädikat.");
+export type Constraint = z.infer<typeof constraintSchema>;
+export const sourceVectorSchema = z.strictObject({
+  contentVersion:revSchema,outlineRevisionId:idSchema,styleRevisionId:idSchema,canonRevisionId:idSchema,
+  unitVersions:z.record(idSchema,revSchema),constraintHash:hashSchema,
+});
+export type SourceVector = z.infer<typeof sourceVectorSchema>;
+export const scenePacketSchema = z.strictObject({
+  id:idSchema,unitId:idSchema,sourceVector:sourceVectorSchema,compilerHash:hashSchema,promptHash:hashSchema,policyHash:hashSchema,
+  constraintIds:z.array(idSchema),dependencyIds:z.array(idSchema),selectedSources:z.array(sourceRefSchema),
+  payload:text(131072),payloadHash:hashSchema,inputTokens:revSchema,tokenizerVersion:text(200),
+});
+export type ScenePacket = z.infer<typeof scenePacketSchema>;
+export const checkResultSchema = z.strictObject({
+  constraintId:idSchema,packetHash:hashSchema,draftHash:hashSchema,checkerHash:hashSchema,
+  status:z.enum(["pass","fail","unknown","not_applicable"]),sourceRefs:z.array(sourceRefSchema),spans:z.array(textSpanSchema),reason:text(4000),
+});
+export type CheckResult = z.infer<typeof checkResultSchema>;
+
 export const reviewSchema = z.strictObject({
   issues: z.array(issueSchema).max(500),
+  checks: z.array(checkResultSchema).max(5000),
   wordCount: z.number().int().nonnegative(),
   language: z.enum(["de", "other", "uncertain"]),
   styleAssessment: z.string().max(8_000),
@@ -553,18 +600,7 @@ export const extractReplySchema = z.strictObject({
   delta: factDeltaSchema,
 });
 export const repairReplySchema = z.strictObject({
-  kind: z.literal("repair"),
-  changes: z
-    .array(
-      z.strictObject({
-        unitId: idSchema,
-        baseRevisionId: idSchema.optional(),
-        prose: z.string().min(1).max(200_000),
-        reason: text(2_000),
-      }),
-    )
-    .min(1)
-    .max(8),
+  kind:z.literal("repair"),unitId:idSchema,baseRevisionId:idSchema.optional(),prose:text(200000),
 });
 export const ideaReplySchema = z.strictObject({
   kind: z.literal("idea"),
@@ -586,6 +622,10 @@ export const modelReplySchema = z.discriminatedUnion("kind", [
   ideaReplySchema,
 ]);
 export type ModelReply = z.infer<typeof modelReplySchema>;
+export const orchestratorReplySchema=z.discriminatedUnion("kind",[auditReplySchema,outlineReplySchema,styleReplySchema,reviewReplySchema,extractReplySchema,ideaReplySchema]);
+export type OrchestratorReply=z.infer<typeof orchestratorReplySchema>;
+export const writerReplySchema=z.discriminatedUnion("kind",[draftReplySchema,repairReplySchema]);
+export type WriterReply=z.infer<typeof writerReplySchema>;
 
 export type DraftReply = z.infer<typeof draftReplySchema>;
 export type AuditReply = z.infer<typeof auditReplySchema>;
@@ -646,20 +686,15 @@ export const pilotPolicySchema = z.strictObject({
 export type PilotPolicy = z.infer<typeof pilotPolicySchema>;
 
 export const textPolicySchema = z.strictObject({
-  baseUrl: urlSchema.refine((value) => value.startsWith("https://"), {
-    message: "Der Textdienst benötigt eine HTTPS-Adresse.",
-    path: ["baseUrl"],
-  }),
-  model: z.literal("mistralai/mistral-large-4-0"),
-  providerOnly: z.tuple([z.literal("mistral")]),
-  providerFallbacks: z.literal(false),
-  dataCollection: z.literal("deny"),
-  zdr: z.literal(true),
-  maxInputUsdPerMillion: usdSchema,
-  maxOutputUsdPerMillion: usdSchema,
-  gatewayFeeBps: bpsSchema,
-  contextTokenLimit: z.number().int().positive(),
-  approvedEvidenceId: text(200),
+  role:textRoleSchema,alias:text(200),baseUrl:urlSchema,model:text(200),providerOnly:z.array(text(100)).min(1).max(10),
+  providerFallbacks:z.literal(false),dataCollection:z.literal("deny"),zdr:z.literal(true),
+  regionEvidenceId:text(200),tokenizerVersion:text(200),contextTokenLimit:z.number().int().positive(),
+  maxCompletionTokens:z.number().int().positive().max(16384),supportedReasoning:z.array(reasoningCapabilitySchema).min(1),
+  maxInputUsdPerMillion:usdSchema,maxOutputUsdPerMillion:usdSchema,maxReasoningUsdPerMillion:usdSchema,
+  gatewayFeeBps:bpsSchema,priceVersion:text(200),approvedEvidenceId:text(200),
+}).superRefine((p,ctx)=>{
+  if(p.role==="orchestrator" && p.alias!=="deepseek-4.1-flash") ctx.addIssue({code:"custom",message:"Falsche Orchestrierung."});
+  if(new Set(p.supportedReasoning.map(r=>r.mode)).size!==p.supportedReasoning.length) ctx.addIssue({code:"custom",message:"Doppelte Denkmodi."});
 });
 export type TextPolicy = z.infer<typeof textPolicySchema>;
 
@@ -682,7 +717,7 @@ export const imagePolicySchema = z.strictObject({
 export type ImagePolicy = z.infer<typeof imagePolicySchema>;
 
 export const providerPolicySchema = z.strictObject({
-  text: textPolicySchema,
+  text: z.strictObject({orchestrator:textPolicySchema.refine(p=>p.role==="orchestrator"),writer:textPolicySchema.refine(p=>p.role==="writer").nullable()}),
   image: imagePolicySchema,
 });
 export type ProviderPolicy = z.infer<typeof providerPolicySchema>;
@@ -962,6 +997,8 @@ export const runRowSchema = z.strictObject({
   spent: usdSchema,
   reserved: usdSchema,
   callCount: z.number().int().nonnegative(),
+  sceneCallCounts:z.record(idSchema,revSchema),
+  textPolicyHashes:z.strictObject({orchestrator:hashSchema,writer:hashSchema}),
   proseWords: z.number().int().nonnegative(),
   cancelledAt: timeSchema.nullable(),
 });
@@ -1029,7 +1066,21 @@ export const snapshotRowSchema = z
   );
 export type SnapshotRow = z.infer<typeof snapshotRowSchema>;
 
+export const scenePacketRowSchema = z.strictObject({...rowBase,ownerId:idSchema,projectId:idSchema,packet:scenePacketSchema});
+export type ScenePacketRow = z.infer<typeof scenePacketRowSchema>;
+export const constraintRowSchema = z.strictObject({...rowBase,ownerId:idSchema,projectId:idSchema,constraint:constraintSchema,version:revSchema,approvedAt:timeSchema.nullable(),approvedBy:idSchema.nullable()});
+export type ConstraintRow = z.infer<typeof constraintRowSchema>;
+export const checkRowSchema = z.strictObject({...rowBase,ownerId:idSchema,projectId:idSchema,taskId:idSchema.nullable(),result:checkResultSchema});
+export type CheckRow = z.infer<typeof checkRowSchema>;
+export const checkpointRowSchema = z.strictObject({...rowBase,ownerId:idSchema,projectId:idSchema,runId:idSchema,unitId:idSchema,stage:modelStageSchema,sourceVector:sourceVectorSchema,outputIds:z.array(idSchema),issueIds:z.array(idSchema),nextAction:z.enum(["review","draft","repair","extract","accept","pause","complete"])});
+export type CheckpointRow = z.infer<typeof checkpointRowSchema>;
+export const syntheticProbeRowSchema = z.strictObject({...mutableBase,operatorId:idSchema,releaseHash:hashSchema,policyHashes:z.array(hashSchema),fixtureHash:hashSchema,mode:z.enum(["fake","live"]),capUsd:usdSchema,spentUsd:usdSchema,reservedUsd:usdSchema,deadline:timeSchema,callLimit:z.literal(3),attemptIds:z.array(idSchema).max(3),state:z.enum(["prepared","dispatching","waiting","ambiguous","complete","failed"]),next:z.enum(["orchestrator","writer","image","settle","done"])});
+export type SyntheticProbeRow = z.infer<typeof syntheticProbeRowSchema>;
+export const probeEnvelopeSchema=z.strictObject({kind:z.literal("qualification.probe"),probeId:idSchema});
+export type ProbeEnvelope = z.infer<typeof probeEnvelopeSchema>;
+
 export const modelRequestSchema = z.strictObject({
+  role:textRoleSchema,reasoning:reasoningModeSchema,packetHash:hashSchema.optional(),
   stage: modelStageSchema,
   messages: z
     .array(
@@ -1041,7 +1092,7 @@ export const modelRequestSchema = z.strictObject({
     .min(1)
     .max(20),
   maxOutputTokens: z.number().int().positive().max(16_384),
-  temperature: z.number().min(0).max(1),
+  temperature: z.number().min(0).max(1).optional(),
   responseKind: z.enum([
     "draft",
     "audit",
@@ -1054,6 +1105,11 @@ export const modelRequestSchema = z.strictObject({
   ]),
   policyHash: hashSchema,
   requestId: idSchema,
+}).superRefine((r,ctx)=>{
+  const expected = {idea:"idea",audit:"audit",style:"style",expand:"outline",normalize:"outline",seed:"extract",preflight:"review",draft:"draft",review:"review",extract:"extract",repair:"repair",reconcile:"extract"} as const;
+  const prose = r.stage==="draft" || r.stage==="repair";
+  const ceilings = {idea:4096,style:4096,review:4096,preflight:4096,audit:8192,seed:8192,extract:8192,reconcile:8192,draft:8192,expand:16384,normalize:16384,repair:16384};
+  if(r.responseKind!==expected[r.stage] || r.role!==(prose?"writer":"orchestrator") || (prose && !r.packetHash) || r.maxOutputTokens>ceilings[r.stage]) ctx.addIssue({code:"custom",message:"Rolle, Stufe oder Ausgabelimit ist ungültig."});
 });
 export type ModelRequest = z.infer<typeof modelRequestSchema>;
 
@@ -1062,6 +1118,7 @@ export const modelTaskRowSchema = z.strictObject({
   ownerId: idSchema,
   projectId: idSchema,
   runId: idSchema.nullable(),
+  role:textRoleSchema,policyHash:hashSchema,packetId:idSchema.nullable(),packetHash:hashSchema.nullable(),
   stage: modelStageSchema,
   targetUnitId: idSchema.nullable(),
   request: modelRequestSchema,
@@ -1083,6 +1140,7 @@ export const proposalRowSchema = z.strictObject({
   review: reviewSchema,
   extractionId: idSchema.nullable(),
   baseGuard: guardSchema,
+  packetHash:hashSchema,checkIds:z.array(idSchema),draftHash:hashSchema,
   state: z.enum(["review", "accepted", "rejected", "stale"]),
 });
 export type ProposalRow = z.infer<typeof proposalRowSchema>;
@@ -1208,10 +1266,12 @@ export const textResultSchema = z.strictObject({
   providerId: text(300),
   replyText: z.string().max(500_000),
   model: text(200),
+  effectiveReasoning:reasoningModeSchema,
   finish: z.enum(["stop", "length", "error"]),
   inputTokens: z.number().int().nonnegative().optional(),
   cachedTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens:revSchema.optional(),totalTokens:revSchema.optional(),
   cost: usdSchema.optional(),
 });
 export type TextResult = z.infer<typeof textResultSchema>;
@@ -1222,6 +1282,7 @@ export const costResultSchema = z.strictObject({
   inputTokens: z.number().int().nonnegative().optional(),
   cachedTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens:revSchema.optional(),totalTokens:revSchema.optional(),
   confidence: z.enum(["actual", "unknown"]),
 });
 export type CostResult = z.infer<typeof costResultSchema>;
@@ -1241,6 +1302,7 @@ export const attemptRowSchema = z.strictObject({
   ownerId: idSchema.nullable(),
   projectId: idSchema.nullable(),
   provider: z.enum(["text", "image", "none"]),
+  role:textRoleSchema.nullable(),stage:modelStageSchema.nullable(),policyHash:hashSchema,requestedReasoning:reasoningModeSchema.nullable(),
   state: attemptStateSchema,
   requestHash: hashSchema,
   providerId: z.string().max(300).nullable(),
@@ -1278,9 +1340,11 @@ export const usageRowSchema = z.strictObject({
   period: dateKeySchema,
   model: text(200),
   providerId: z.string().max(300).nullable(),
+  role:textRoleSchema.nullable(),stage:modelStageSchema.nullable(),
   inputTokens: z.number().int().nonnegative().nullable(),
   cachedTokens: z.number().int().nonnegative().nullable(),
   outputTokens: z.number().int().nonnegative().nullable(),
+  reasoningTokens:revSchema.nullable(),totalTokens:revSchema.nullable(),durationMs:revSchema.nullable(),acceptedWords:revSchema,
   generatedWords: z.number().int().nonnegative(),
   images: z.number().int().nonnegative(),
   cost: usdSchema.nullable(),
@@ -1595,6 +1659,7 @@ export const reserveInputSchema = z.strictObject({
   projectId: idSchema,
   runId: idSchema.optional(),
   kind: z.enum(["draft", "revision", "review", "planning", "canon", "cover"]),
+  role:textRoleSchema.optional(),stage:modelStageSchema.optional(),reasoningUpper:revSchema,
   inputUpper: z.number().int().nonnegative(),
   outputUpper: z.number().int().nonnegative(),
   imageCount: z.number().int().nonnegative(),
@@ -1610,6 +1675,7 @@ export const settleInputSchema = z.strictObject({
   inputTokens: z.number().int().nonnegative().optional(),
   cachedTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
+  reasoningTokens:revSchema.optional(),totalTokens:revSchema.optional(),
   generatedWords: z.number().int().nonnegative(),
   images: z.number().int().nonnegative(),
   confidence: z.enum(["actual", "estimated", "unknown"]),

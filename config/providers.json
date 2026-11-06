@@ -1,16 +1,54 @@
 {
   "text": {
-    "baseUrl": "https://eu.openrouter.ai/api/v1",
-    "model": "mistralai/mistral-large-4-0",
-    "providerOnly": ["mistral"],
-    "providerFallbacks": false,
-    "dataCollection": "deny",
-    "zdr": true,
-    "maxInputUsdPerMillion": "770000",
-    "maxOutputUsdPerMillion": "2310000",
-    "gatewayFeeBps": 800,
-    "contextTokenLimit": 131072,
-    "approvedEvidenceId": "pending-local-approval"
+    "orchestrator": {
+      "role": "orchestrator",
+      "alias": "deepseek-4.1-flash",
+      "baseUrl": "http://127.0.0.1:4400/api/v1",
+      "model": "fake/orchestrator",
+      "providerOnly": [
+        "fake"
+      ],
+      "providerFallbacks": false,
+      "dataCollection": "deny",
+      "zdr": true,
+      "regionEvidenceId": "fake-local-only",
+      "tokenizerVersion": "fake-utf8-v1",
+      "contextTokenLimit": 131072,
+      "maxCompletionTokens": 16384,
+      "supportedReasoning": [
+        {
+          "mode": "off",
+          "parameter": "effort",
+          "value": "off",
+          "billableWithinCompletionCap": true
+        },
+        {
+          "mode": "low",
+          "parameter": "effort",
+          "value": "low",
+          "billableWithinCompletionCap": true
+        },
+        {
+          "mode": "high",
+          "parameter": "effort",
+          "value": "high",
+          "billableWithinCompletionCap": true
+        },
+        {
+          "mode": "max",
+          "parameter": "effort",
+          "value": "max",
+          "billableWithinCompletionCap": true
+        }
+      ],
+      "maxInputUsdPerMillion": "1000000",
+      "maxOutputUsdPerMillion": "2000000",
+      "maxReasoningUsdPerMillion": "2000000",
+      "gatewayFeeBps": 800,
+      "priceVersion": "fake-v1",
+      "approvedEvidenceId": "fake-not-qualified"
+    },
+    "writer": null
   },
   "image": {
     "baseUrl": "https://api.eu.bfl.ai",

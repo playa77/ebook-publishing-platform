@@ -188,3 +188,48 @@ protocol file. Local-link/section/package/table audit passes: all 41 original
 packages and every original persistent table are retained, with WP-02R/02C added.
 `git diff --check` passes; application source/config and dependency files have
 no diff. No build/live benchmark was rerun for this documentation-only change.
+
+## Fresh canonical Phase A execution — 2026-11-06
+
+Remote synchronization preceded project-document reads and edits. `git fetch
+--prune origin` succeeded with command network access enabled; `ls-remote
+--symref origin HEAD` confirmed `main` at
+`643db8c23b45c891e811a186ccd65ea7240cc225`. New isolated worktree:
+`/workspace/ebook-phase-a`, branch `phase-a-canonical`. The original `work`
+checkout was preserved. No rejected implementation was imported.
+
+WP-01 was rechecked with downloaded Node 26.13.0 (official SHA-256 verified),
+npm 11.20.0 and the unchanged lock: `npm ci`, lint, strict typecheck and nine
+toolchain tests passed. An initial restricted-sandbox build failed parsing its
+TypeScript subprocess output; the same build with command access enabled passed,
+including its TypeScript stage and German shell prerendering. No checks disabled.
+
+### WP-02R checkpoint (D1/D2/D3 2.0.0)
+
+Migrated domain/operation/port/config contracts to separate text roles, closed
+reasoning capabilities, source vectors, constraints, packets/checkpoints/checks,
+single-scene writer repairs, role/stage metering and the authoritative synthetic
+qualification journal. Added staged admission and fail-closed captured-policy
+validation. Committed policies are explicitly fake orchestration plus null writer;
+no live model slug, price or approval was invented. Added backup key selectors.
+Old policy tests were migrated because the single-Mistral assertions are obsolete;
+existing editor, fault, command/privacy and monetary tests remain active.
+`role-policy.test.ts` covers incorrect role/stage/budget, legacy policy rejection,
+null writer, fake/live isolation, changed policy hashes and private probe commands.
+
+### WP-02C checkpoint (D1/D2/D3 2.0.0)
+
+Added pure packet/check helpers and derived state projection with synthetic v2
+fixtures. Exact requirements are retained, constraint hash omissions fail, closure
+is deterministic, future knowledge is excluded, changed sources invalidate evidence,
+unknown coverage blocks, and semantic review cannot erase deterministic failures.
+Scope-local style input must have an unambiguous chapter modulation; unresolved
+selection pauses. The supported tokenizer is explicitly `fake-utf8-v1` (conservative
+UTF-8 byte counting), for fake policies only. No live tokenizer or semantic recall
+is claimed. Owning persisted callers remain WP-15/16, as the roadmap specifies.
+
+Verification at this checkpoint: `npm run lint`, `npm run typecheck`, and
+`npm run test:unit` passed (71 tests in seven files); `npm run build` passed
+before the final fixture-only additions. Schema version: **none**, no services or
+application rows yet. Next: finish current compiler review, then WP-03. No PR or
+Phase A completion is claimed by this checkpoint.

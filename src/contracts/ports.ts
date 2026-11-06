@@ -1,4 +1,10 @@
 import type {
+  CheckRow,
+  ConstraintRow,
+  ScenePacketRow,
+  CheckpointRow,
+  SyntheticProbeRow,
+  BillingAdjustmentRow,
   AccountRow,
   AssetRow,
   AttemptRow,
@@ -131,16 +137,16 @@ export type LoadKind =
 export interface LoadRowsByKind {
   account: AccountRow | InviteRow | PolicyRow | CommandRecord | RateRow;
   project: ProjectRow | UnitRow | PolicyRow | CounterRow;
-  planning: PlanRow | ImportRow | UnitRow;
-  scene: UnitRow | DraftRow | RevisionRow | ProposalRow | ExtractionRow;
-  run: RunRow | SnapshotRow | ProposalRow | ConflictRow | ModelTaskRow;
-  canon: CanonRow | ExtractionRow | ConflictRow | UnitRow | RevisionRow;
+  planning: PlanRow | ImportRow | UnitRow | ConstraintRow | CheckRow;
+  scene: UnitRow | DraftRow | RevisionRow | ProposalRow | ExtractionRow | ScenePacketRow | CheckRow;
+  run: RunRow | SnapshotRow | ProposalRow | ConflictRow | ModelTaskRow | ConstraintRow | ScenePacketRow | CheckRow | CheckpointRow;
+  canon: CanonRow | ExtractionRow | ConflictRow | UnitRow | RevisionRow | ConstraintRow | CheckRow | CheckpointRow;
   assets: AssetRow | CoverBatchRow | CoverLayoutRow;
   export: ExportRow | SnapshotRow | AssetRow;
   privacy: DeletionRow | ProjectRow | SnapshotRow | ExportRow | AccountRow | InviteRow;
-  ops: AuditRow | BackupRow | ScheduleRow | PolicyRow | AccountRow | JobRow;
+  ops: AuditRow | BackupRow | ScheduleRow | PolicyRow | AccountRow | JobRow | SyntheticProbeRow | BillingAdjustmentRow;
   job: JobRow | SlotRow | AttemptRow | ModelTaskRow;
-  cost: ReservationRow | UsageRow | CounterRow | AttemptRow | PolicyRow;
+  cost: ReservationRow | UsageRow | CounterRow | AttemptRow | PolicyRow | SyntheticProbeRow | BillingAdjustmentRow;
 }
 
 export type LoadRequest = {
@@ -203,7 +209,8 @@ export type TxKind =
   | "schedule_tick"
   | "backup_record"
   | "retention_tick"
-  | "rate_limit";
+  | "rate_limit"
+  | "probe_record";
 
 export type CommitRequest = {
   kind: TxKind;
@@ -244,7 +251,7 @@ export interface ObjectInfo {
 
 export interface SignInput {
   ref: ObjectRef;
-  expiresSeconds: number;
+  expiresSeconds: 60;
 }
 
 export interface RemoteRequest {
@@ -445,6 +452,7 @@ export interface UsageModule {
 }
 
 export interface GatewayModule {
+  probe(ctx:CallContext,input:{probeId:string;expectedVersion:number}):Promise<import("./errors").Outcome<SyntheticProbeRow>>;
   lookup(
     ctx: CallContext,
     attempt: AttemptRow,

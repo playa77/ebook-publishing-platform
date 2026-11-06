@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {syntheticProbeRowSchema,scenePacketRowSchema,constraintRowSchema,checkRowSchema,checkpointRowSchema} from "./domain";
 
 import {
   artDirectionSchema,
@@ -382,6 +383,8 @@ export type Command = z.infer<typeof publicCommandSchema>;
 // ---------------------------------------------------------------------------
 
 export const internalCommandSchema = z.discriminatedUnion("op", [
+  z.strictObject({op:z.literal("operations.probeStart"),input:z.strictObject({capUsd:usdSchema,deadline:timeSchema,policyHashes:z.array(hashSchema),fixtureHash:hashSchema})}),
+  z.strictObject({op:z.literal("operations.probeAdvance"),input:z.strictObject({probeId:idSchema,expectedVersion:z.number().int().nonnegative()})}),
   z.strictObject({
     op: z.literal("identity.bootstrapOperator"),
     input: z.strictObject({ email: z.string().email().max(320) }),
@@ -553,6 +556,7 @@ export const counterChangeSchema = z.strictObject({
 export type CounterChange = z.infer<typeof counterChangeSchema>;
 
 export const stepMutationSchema = z.discriminatedUnion("kind", [
+  z.strictObject({kind:z.literal("probe_record"),probe:syntheticProbeRowSchema,attempts:z.array(attemptRowSchema),reservations:z.array(reservationRowSchema),usage:z.array(usageRowSchema)}),
   z.strictObject({
     kind: z.enum(["job_claim", "job_heartbeat", "job_finish", "job_retry"]),
     job: jobRowSchema,
@@ -572,6 +576,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("plan_propose"),
+    packets:z.array(scenePacketRowSchema),constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     revision: planRowSchema,
     task: modelTaskRowSchema.optional(),
     issues: z.array(issueSchema),
@@ -585,6 +590,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("proposal_accept"),
+    packets:z.array(scenePacketRowSchema),constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     proposal: proposalRowSchema,
     revisions: z.array(revisionRowSchema),
     canon: canonRowSchema,
@@ -594,6 +600,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("run_control"),
+    packets:z.array(scenePacketRowSchema),constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     run: runRowSchema,
     proposals: z.array(proposalRowSchema),
     modelTasks: z.array(modelTaskRowSchema),
@@ -604,6 +611,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("canon_stage"),
+    packets:z.array(scenePacketRowSchema),constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     revisions: z.array(revisionRowSchema),
     extractions: z.array(extractionRowSchema),
     modelTasks: z.array(modelTaskRowSchema).optional(),
@@ -688,7 +696,8 @@ export const cliCommandSchema = z.discriminatedUnion("command", [
   z.strictObject({
     command: z.literal("restore-check"),
     backupId: idSchema,
-    target: z.literal("local-isolated"),
+    target: z.enum(["local-isolated","hosted-isolated"]),
+    configRef:z.string().min(1).optional(),
   }),
   z.strictObject({
     command: z.literal("economics"),
@@ -698,6 +707,7 @@ export const cliCommandSchema = z.discriminatedUnion("command", [
     command: z.literal("smoke-live"),
     maxUsd: usdSchema,
     syntheticOnly: z.literal(true),
+    resume:idSchema.optional(),
   }),
   z.strictObject({ command: z.literal("release-check") }),
 ]);

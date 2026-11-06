@@ -56,3 +56,16 @@ requirements, not implemented or live-qualified capabilities.
 
 No release. Continue with WP-02R and WP-02C, then WP-03 and its dependent packages. `release-check` does not exist yet; it must
 not be represented as passing.
+
+## Fresh v2 implementation checkpoint — 2026-11-06
+
+Base freshly fetched and verified:
+`origin/main` = `643db8c23b45c891e811a186ccd65ea7240cc225`.
+Isolated branch `phase-a-canonical`; no rejected code reused.
+WP-01 clean installation and current toolchain checks rerun. Two-role contract
+migration and pure packet/check/state helpers are now under implementation review.
+Current fresh evidence: lint/typecheck pass, 71 unit tests pass; shell build passes
+with command access enabled. Fixtures test harness logic, not model quality.
+Local policies are fake, writer unselected, live admission closed. No database
+schema, local stack, migration CLI or persistence verification exists yet.
+**Phase A remains incomplete. No PR should be opened at this checkpoint.**
