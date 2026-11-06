@@ -89,8 +89,8 @@ describe("German application shell", () => {
   });
 });
 
-describe("baseline document copies", () => {
-  it("preserves the accepted document versions under their implementation paths", () => {
+describe("versioned design documents", () => {
+  it("links current drafts to their preserved historical baselines", () => {
     const copies = [
       ["docs/architecture.md", "docs/01-design-document-v1.0.0.md", "Version: **1.0.0**"],
       ["docs/technical-spec.md", "docs/02-technical-specification-v1.0.0.md", "Version: **1.0.0**"],
@@ -102,8 +102,11 @@ describe("baseline document copies", () => {
     ] as const;
     for (const [copy, source, marker] of copies) {
       expect(existsSync(resolve(root, copy)), `missing ${copy}`).toBe(true);
-      expect(read(copy)).toBe(read(source));
-      expect(read(copy)).toContain(marker);
+      expect(read(source)).toContain(marker);
+      expect(read(copy)).toContain("Version: **2.0.0**");
+      expect(read(copy)).toContain("draft");
+      expect(read(copy)).toContain(source.replace("docs/", ""));
+      expect(read(copy)).toContain("writing-system.md");
     }
   });
 });

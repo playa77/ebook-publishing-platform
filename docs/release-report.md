@@ -5,7 +5,20 @@ Status: **local foundation only. Not a release candidate and not pilot-ready.**
 The report records evidence produced by actual commands. Anything not
 executed is listed as missing, not inferred.
 
-## Current evidence
+## Documentation revision — 2026-11-06
+
+Active README/D1/D2/D3 now describe the proposed two-role design; shared scene
+protocol, checking harness and benchmark are in `writing-system.md`. Historical
+numbered v1 files are preserved unchanged. Existing missing-version references
+are superseded by the current explicit baseline map; historical implementation
+gaps remain until implemented.
+
+No runtime policy, provider configuration, live qualification or application
+behavior changed. `config/providers.json` and current contracts still implement
+the v1 single-Mistral policy. R1 must migrate them before two-role execution.
+No new model call or savings claim was verified in this documentation task.
+
+## Current implementation evidence (v1 foundation)
 
 | Area | Evidence | Status |
 |---|---|---|
