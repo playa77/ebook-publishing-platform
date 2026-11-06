@@ -17,10 +17,48 @@ async function artifact(manifest,path){
  if(!existsSync(path))run("curl",["-fsSL","--connect-timeout","15","--max-time","180",manifest.url,"-o",path]);
  if(hash(readFileSync(path))!==manifest.sha256)throw new Error(`Artifact hash mismatch: ${path}`);
 }
+function prepareFakeRuntime(){
+ const sourceImage=`node@sha256:${release.imageDigests.node}`;
+ const rootfs=resolve("work/fake-runtime-root"),lockFile=resolve("work/fake-runtime-lock.json");
+ const nodeBinary=process.execPath,nodeHash=hash(readFileSync(nodeBinary));
+ if(existsSync(lockFile)){
+  const lock=JSON.parse(readFileSync(lockFile,"utf8"));
+  let actual;try{actual=execFileSync("docker",["image","inspect",lock.image,"--format","{{.Id}}"],{encoding:"utf8",env}).trim();}catch{}
+  if(actual===lock.imageId && lock.sourceImage===sourceImage && lock.nodeHash===nodeHash && treeHash(rootfs)===lock.libraryHash)return {...lock,nodeBinary};
+ }
+ const ownedFile=resolve("work/runtime-owned-images.json");
+ const owned=existsSync(ownedFile)?JSON.parse(readFileSync(ownedFile,"utf8")):[];
+ try{execFileSync("docker",["image","inspect",sourceImage],{stdio:"pipe",env});}catch{run("docker",["pull",sourceImage]);if(!owned.includes(sourceImage))owned.push(sourceImage);writeFileSync(ownedFile,JSON.stringify(owned),{mode:0o600});}
+ const donor="ebook-phase-a-runtime-source";
+ // Only a labeled, task-owned donor may be replaced.
+ try{const old=JSON.parse(execFileSync("docker",["inspect",donor],{encoding:"utf8",env}))[0];if(old.Config.Labels?.["ebook.phase-a"]!=="canonical")throw new Error("Unrelated runtime donor name");run("docker",["rm","-f",donor]);}catch(e){if(e.message==="Unrelated runtime donor name")throw e;}
+ const dependencies=["/usr/local/bin/node","/app/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node","/app/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7"];
+ run("docker",["create","--name",donor,"--label","ebook.phase-a=canonical","--mount",`type=bind,src=${root},dst=/app,readonly`,"--entrypoint","/usr/bin/ldd",sourceImage,...dependencies]);
+ try{
+  const ldd=run("docker",["start","--attach",donor]);
+  if(ldd.includes("not found"))throw new Error("Incomplete native runtime closure");
+  const paths=new Set([...ldd.matchAll(/(?:=>\s+|^\s*)(\/(?:lib|usr\/lib)[^\s()]*)/gm)].map(m=>m[1]));
+  if(paths.size<6)throw new Error("Native runtime closure missing");
+  for(const name of ["tmp","data","app","usr/local/bin"])mkdirSync(resolve(rootfs,name),{recursive:true});chmodSync(resolve(rootfs,"tmp"),0o1777);
+  for(const name of [...paths].sort()){
+   const target=resolve(rootfs,name.slice(1));if(!target.startsWith(rootfs+"/"))throw new Error("Unsafe native dependency path");mkdirSync(dirname(target),{recursive:true});run("docker",["cp","-L",`${donor}:${name}`,target]);
+  }
+  const libraryHash=treeHash(rootfs);
+  if(release.fakeRuntime && (release.fakeRuntime.libraryTreeHash!==libraryHash || release.fakeRuntime.nodeBinaryHash!==nodeHash))throw new Error("Local fake runtime lock mismatch");
+  const image=`ebook-phase-a-node-libs:${libraryHash.slice(0,16)}`;
+  run("tar",["--sort=name","--mtime=@0","--owner=0","--group=0","--numeric-owner","-cf","work/fake-runtime.tar","-C",rootfs,"."]);
+  run("docker",["import","--change","ENV PATH=/usr/local/bin","--change","LABEL ebook.phase-a=canonical","work/fake-runtime.tar",image]);unlinkSync("work/fake-runtime.tar");
+  const imageId=run("docker",["image","inspect",image,"--format","{{.Id}}"]).trim();
+  const lock={sourceImage,nodeHash,libraryHash,image,imageId};writeFileSync(lockFile,JSON.stringify(lock,null,2),{mode:0o600});return {...lock,nodeBinary};
+ }finally{
+  run("docker",["rm","-f",donor]);
+  if(owned.includes(sourceImage) && !run("docker",["ps","-aq","--filter",`ancestor=${sourceImage}`]).trim())run("docker",["image","rm",sourceImage]);
+ }
+}
 const compose=["compose","--env-file",".env.compose","-f","infra/compose.yaml"];
 if(mode==="down"){
  if(!existsSync(".env.compose") || !existsSync(cli))throw new Error("No owned initialized environment to stop");
- run("docker",[...compose,"stop"]);run(cli,["stop"]);console.log("Owned local services stopped; all data volumes retained.");
+ run("docker",[...compose,"down"]);run(cli,["stop"]);console.log("Owned local services stopped; all data volumes retained.");
 }else{
  if(process.version!=="v26.13.0")throw new Error("Node 26.13.0 required before bootstrap");
  if(run("npm",["--version"]).trim()!=="11.20.0")throw new Error("npm 11.20.0 required");
@@ -44,6 +82,7 @@ if(mode==="down"){
  for(const font of fonts.fonts){if(hash(readFileSync(font.file))!==font.sha256 || !readFileSync(font.licenseFile,"utf8").includes("SIL OPEN FONT LICENSE"))throw new Error("Font/license lock mismatch");}
  run(process.execPath,["node_modules/@playwright/test/cli.js","install","chromium","--only-shell"]);
  const browser=release.toolArtifacts.find(a=>a.name==="chromium-headless-shell");if(hash(readFileSync(resolve(env.PLAYWRIGHT_BROWSERS_PATH,"chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell")))!==browser.sha256)throw new Error("Chromium executable lock mismatch");
+ const fakeRuntime=prepareFakeRuntime();
  // A fixed named bridge supplies loopback as the default for Supabase CLI publications.
  let network;try{network=JSON.parse(execFileSync("docker",["network","inspect","ebook_phase_a_local"],{encoding:"utf8",env}))[0];}catch{run("docker",["network","create","--label","ebook.phase-a=canonical","--opt","com.docker.network.bridge.host_binding_ipv4=127.0.0.1","ebook_phase_a_local"]);network=JSON.parse(run("docker",["network","inspect","ebook_phase_a_local"]))[0];}
  if(network.Labels["ebook.phase-a"]!=="canonical" || network.Options["com.docker.network.bridge.host_binding_ipv4"]!=="127.0.0.1")throw new Error("Refusing unrelated or non-loopback network");
@@ -54,6 +93,7 @@ if(mode==="down"){
  writeFileSync(resolve(shimDir,"docker"),`#!/usr/bin/env node\nimport {spawnSync} from 'node:child_process';const args=process.argv.slice(2),i=args.indexOf('create'),n=args.indexOf('--name');if(i>=0&&n>=0&&/^supabase_[a-z_-]+_author-platform$/.test(args[n+1]??''))args.splice(i+1,0,'--env','http_proxy=','--env','https_proxy=');const c=spawnSync(${JSON.stringify(realDocker)},args,{stdio:'inherit',env:process.env});process.exit(c.status??1);\n`,{mode:0o700});
  const cliEnv={...env,PATH:`${shimDir}:${env.PATH}`};
  const start=run(cli,["start","--network-id","ebook_phase_a_local"],{env:cliEnv});writeFileSync(log,start,{mode:0o600});
+ run(cli,["seed","buckets"]);
  const status=JSON.parse(run(cli,["status","-o","json"]));
  const dbName="supabase_db_author-platform";
  const containers=JSON.parse(run("docker",["inspect",...run("docker",["ps","-aq","--filter","label=com.supabase.cli.project=author-platform"]).trim().split(/\s+/u).filter(Boolean)]));
@@ -65,7 +105,7 @@ if(mode==="down"){
  const db=status.DB_URL??status.db_url,api=status.API_URL??status.api_url;
  if(typeof db!=="string" || typeof api!=="string")throw new Error("Unsupported Supabase status contract");
  const urlFor=(login,password)=>{const u=new URL(db);u.username=login;u.password=password;return u.toString();};
- const common={APP_ENV:"local",APP_URL:"http://localhost:3000",PROVIDER_MODE:"fake",SUPABASE_URL:api,SUPABASE_PUBLISHABLE_KEY:status.PUBLISHABLE_KEY??status.ANON_KEY??status.anon_key,SUPABASE_ADMIN_KEY:status.SERVICE_ROLE_KEY??status.service_role_key,DATABASE_URL_MIGRATE:db,DATABASE_URL_WEB:urlFor("ebook_local_web",secrets.web),DATABASE_URL_WORKER:urlFor("ebook_local_worker",secrets.worker),DATABASE_URL_BACKUP:urlFor("ebook_local_backup",secrets.backup),LOCAL_MAIL_URL:status.MAILPIT_URL??status.INBUCKET_URL??status.inbucket_url,FAKE_CONTROL_TOKEN:secrets.control,FAKE_TEXT_URL:"http://127.0.0.1:4400/api/v1",FAKE_BACKUP_URL:"http://127.0.0.1:4401",INVITE_HMAC_KEY:secrets.invite,TRANSIENT_ENCRYPTION_KEY:secrets.transient,LOG_PSEUDONYM_KEY:secrets.log,BACKUP_KEY_ID:"local-v1",BACKUP_KEYS_CONFIG:resolve("work/backup-keys.json"),JAVA_HOME:javaHome,EPUBCHECK_JAR:resolve(epubDir,epub.jarPath),PLAYWRIGHT_BROWSERS_PATH:env.PLAYWRIGHT_BROWSERS_PATH,SUPABASE_HOME:env.SUPABASE_HOME};
+ const common={LOCAL_NODE_BINARY:fakeRuntime.nodeBinary,LOCAL_FAKE_RUNTIME_IMAGE:fakeRuntime.image,APP_ENV:"local",APP_URL:"http://localhost:3000",PROVIDER_MODE:"fake",SUPABASE_URL:api,SUPABASE_PUBLISHABLE_KEY:status.PUBLISHABLE_KEY??status.ANON_KEY??status.anon_key,SUPABASE_ADMIN_KEY:status.SERVICE_ROLE_KEY??status.service_role_key,DATABASE_URL_MIGRATE:db,DATABASE_URL_WEB:urlFor("ebook_local_web",secrets.web),DATABASE_URL_WORKER:urlFor("ebook_local_worker",secrets.worker),DATABASE_URL_BACKUP:urlFor("ebook_local_backup",secrets.backup),LOCAL_MAIL_URL:status.MAILPIT_URL??status.INBUCKET_URL??status.inbucket_url,FAKE_CONTROL_TOKEN:secrets.control,FAKE_TEXT_URL:"http://127.0.0.1:4400/api/v1",FAKE_BACKUP_URL:"http://127.0.0.1:4401",INVITE_HMAC_KEY:secrets.invite,TRANSIENT_ENCRYPTION_KEY:secrets.transient,LOG_PSEUDONYM_KEY:secrets.log,BACKUP_KEY_ID:"local-v1",BACKUP_KEYS_CONFIG:resolve("work/backup-keys.json"),JAVA_HOME:javaHome,EPUBCHECK_JAR:resolve(epubDir,epub.jarPath),PLAYWRIGHT_BROWSERS_PATH:env.PLAYWRIGHT_BROWSERS_PATH,SUPABASE_HOME:env.SUPABASE_HOME};
  writeFileSync("work/backup-keys.json",JSON.stringify({"local-v1":secrets.vault}),{mode:0o600});
  const serialize=values=>Object.entries(values).map(([k,v])=>{if(typeof v!=="string")throw new Error(`Missing discovered local field ${k}`);return `${k}=${JSON.stringify(v)}`;}).join("\n")+"\n";
  writeFileSync(".env.local",serialize(common),{mode:0o600});

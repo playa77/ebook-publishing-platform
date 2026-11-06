@@ -309,3 +309,35 @@ A final `git fetch --prune origin` and `ls-remote --symref origin HEAD` again re
 `main` at `643db8c23b45c891e811a186ccd65ea7240cc225`; no upstream reconciliation was
 needed. Original `work` checkout remains preserved. Do not reuse historical test
 counts/schema claims as acceptance of the unfinished packages.
+
+## WP-03 resumed on fixed-capacity environment — 2026-11-06
+
+Upstream was fetched again before project work. `main` remains
+`643db8c23b45c891e811a186ccd65ea7240cc225`. Fresh branch `phase-a-fit-local`
+was created at that commit; only this session's two checkpoints were integrated.
+The rejected implementation and original `work` checkout remain excluded.
+
+The earlier disk blocker was resolved without more capacity or changing Docker's
+storage driver. Inventory showed zero old containers and about 77 MB of retained
+owned volumes. A duplicate Node installation was removed only after checking that
+the existing pinned Node binary/npm metadata matched. The original setup remains
+read-only. The fake containers now use a 5.49 MB runtime-library image extracted
+from the pinned official Node Debian image's actual native dependency closure;
+the verified Node executable and package tree are mounted read-only. Source image,
+Node binary and library-tree hashes are locked. Provider and backup remain separate
+processes/containers with independent durable volumes. The donor container and its
+task-owned image reference are explicitly removed. No broad image prune was used.
+
+`env:down` removes owned containers but preserves volumes, avoiding vfs writable
+filesystem copies while stopped. About 786 MB remained with all eight containers
+running. No service/check was replaced or disabled to achieve this.
+
+Actual verification: `env:up`, lint, typecheck and 72 unit tests passed;
+`env:down` → `env:up` → named harness/boundary suites passed (six tests).
+The harness observes actual PostgreSQL 17/Auth/Storage/mail, private signup/bucket,
+provider state across fake and web-shell process restarts, native Java/EPUBCheck/
+Chromium/fonts, and S3 bytes surviving replacement of the empty primary test DB.
+Reset uses the same owned network and restores configured bucket metadata via the
+Supabase CLI; it refuses nonlocal or populated Auth/application targets. No domain
+accounts/manuscripts are seeded. Schema version remains none until WP-04.
+The earlier capacity-blocked status is historical; continue with WP-04–WP-07.

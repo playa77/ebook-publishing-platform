@@ -246,6 +246,7 @@ export const fakeReleaseEvidenceSchema = z.strictObject({
   mode: z.literal("fake"),
   checkedAt: timeSchema,
   note: z.string().min(1).max(500),
+  fakeRuntime:z.strictObject({sourceImage:z.string().min(1),libraryTreeHash:hashSchema,nodeBinaryHash:hashSchema}).optional(),
   supabaseCli:z.strictObject({version:z.string().min(1),sha256:hashSchema}).optional(),
   imageDigests:z.record(z.string(),hashSchema).optional(),
   validatorVersion:z.literal("5.4.0").optional(),

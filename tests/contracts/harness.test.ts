@@ -1,6 +1,7 @@
 import {it,expect} from "vitest";
 import {readFileSync} from "node:fs";
 import {createHash,randomUUID} from "node:crypto";
+import {spawn} from "node:child_process";
 import {execFileSync} from "node:child_process";
 import {Pool} from "pg";
 import {S3Client,PutObjectCommand,GetObjectCommand,ListObjectsV2Command} from "@aws-sdk/client-s3";
@@ -25,12 +26,26 @@ it("rejects relaxed provider requests and retains tasks after the fake process r
  execFileSync("docker",["compose","--env-file",".env.compose","-f","infra/compose.yaml","restart","provider-fake"],{stdio:"pipe",timeout:30000});
  const deadline=Date.now()+15000;let healthy=false;do{try{healthy=(await fetch(`${origin}/health`)).ok;}catch{}if(!healthy)await new Promise(r=>setTimeout(r,100));}while(!healthy && Date.now()<deadline);expect(healthy).toBe(true);
  expect((await fetch(`${origin}/api/v1/generation?id=${encodeURIComponent(received.id)}`)).ok).toBe(true);
+ for(let restart=0;restart<2;restart++){
+  const app=spawn(process.execPath,["node_modules/next/dist/bin/next","start","--hostname","127.0.0.1","--port","3300"],{stdio:"pipe",env:process.env});
+  try{let ready=false;const end=Date.now()+12000;while(Date.now()<end&&!ready){if(app.exitCode!==null)throw new Error("Web shell exited before readiness");try{ready=(await fetch("http://127.0.0.1:3300")).ok;}catch{}if(!ready)await new Promise(r=>setTimeout(r,100));}expect(ready).toBe(true);expect((await fetch(`${origin}/api/v1/generation?id=${encodeURIComponent(received.id)}`)).ok).toBe(true);}
+  finally{app.kill("SIGTERM");await new Promise<void>(resolve=>{const timer=setTimeout(()=>{app.kill("SIGKILL");resolve();},3000);app.once("exit",()=>{clearTimeout(timer);resolve();});});}
+ }
+
 });
 it("stores and lists real independent backup bytes through the S3 wire protocol",async()=>{
  const client=new S3Client({endpoint:required("FAKE_BACKUP_URL"),region:"eu-central-1",forcePathStyle:true,credentials:{accessKeyId:"fake-local-access",secretAccessKey:"fake-local-secret"},maxAttempts:1});
  const key=`harness/${randomUUID()}.bin`,bytes=Buffer.from("independent synthetic boundary");
- try{await client.send(new PutObjectCommand({Bucket:"local-backup",Key:key,Body:bytes}));const result=await client.send(new GetObjectCommand({Bucket:"local-backup",Key:key}));expect(Buffer.from(await result.Body!.transformToByteArray())).toEqual(bytes);expect((await client.send(new ListObjectsV2Command({Bucket:"local-backup",Prefix:"harness/"}))).Contents?.some(i=>i.Key===key)).toBe(true);}finally{client.destroy();}
-});
+ try{await client.send(new PutObjectCommand({Bucket:"local-backup",Key:key,Body:bytes}));
+ const db=required("DATABASE_URL_MIGRATE");if(new URL(db).hostname!=="127.0.0.1"||new URL(db).port!=="56322")throw new Error("Refusing nonlocal reset");
+ const pool=new Pool({connectionString:db,max:1});try{
+  if((await pool.query<{count:string}>("select count(*)::text as count from auth.users")).rows[0]?.count!=="0")throw new Error("Refusing reset of populated Auth");
+  const table=await pool.query<{present:boolean}>("select to_regclass('app.accounts') is not null as present");if(table.rows[0]?.present && (await pool.query<{count:string}>("select count(*)::text as count from app.accounts")).rows[0]?.count!=="0")throw new Error("Refusing reset of populated application");
+ }finally{await pool.end();}
+ execFileSync("work/bin/supabase",["db","reset","--local","--network-id","ebook_phase_a_local"],{env:{...process.env,SUPABASE_USE_SLIM_IMAGES:"1",PATH:`${process.cwd()}/work/docker-shim:${process.env.PATH}`},stdio:"pipe",timeout:90000});
+ execFileSync("work/bin/supabase",["seed","buckets"],{env:process.env,stdio:"pipe",timeout:15000});
+ const result=await client.send(new GetObjectCommand({Bucket:"local-backup",Key:key}));expect(Buffer.from(await result.Body!.transformToByteArray())).toEqual(bytes);expect((await client.send(new ListObjectsV2Command({Bucket:"local-backup",Prefix:"harness/"}))).Contents?.some(i=>i.Key===key)).toBe(true);}finally{client.destroy();}
+},120000);
 it("verifies pinned fonts, actual Java/EPUBCheck and matching Chromium",async()=>{
  const fonts=JSON.parse(readFileSync("config/fonts.json","utf8")) as {fonts:{file:string;sha256:string;licenseFile:string}[]};expect(fonts.fonts).toHaveLength(4);for(const f of fonts.fonts){expect(createHash("sha256").update(readFileSync(f.file)).digest("hex")).toBe(f.sha256);expect(readFileSync(f.licenseFile,"utf8")).toContain("SIL OPEN FONT LICENSE");}
  expect(execFileSync(`${required("JAVA_HOME")}/bin/java`,["-jar",required("EPUBCHECK_JAR"),"--version"],{encoding:"utf8"})).toContain("5.4.0");

@@ -1,7 +1,7 @@
 name: ebook-phase-a-canonical
 services:
   provider-fake:
-    image: node@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68
+    image: ${LOCAL_FAKE_RUNTIME_IMAGE:?}
     working_dir: /app
     command: ["node", "node_modules/tsx/dist/cli.mjs", "tests/support/provider-server.ts"]
     environment:
@@ -12,7 +12,7 @@ services:
       FAKE_PUBLIC_ORIGIN: http://127.0.0.1:4400
       PORT: "4400"
     ports: ["127.0.0.1:4400:4400"]
-    volumes: ["../:/app:ro", "provider-data:/data"]
+    volumes: ["../:/app:ro", "${LOCAL_NODE_BINARY:?}:/usr/local/bin/node:ro", "provider-data:/data"]
     networks: [local]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4400/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -20,7 +20,7 @@ services:
       timeout: 2s
       retries: 30
   backup-fake:
-    image: node@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68
+    image: ${LOCAL_FAKE_RUNTIME_IMAGE:?}
     working_dir: /app
     command: ["node", "node_modules/tsx/dist/cli.mjs", "tests/support/backup-server.ts"]
     environment:
@@ -29,7 +29,7 @@ services:
       FAKE_DATA_DIR: /data
       PORT: "4401"
     ports: ["127.0.0.1:4401:4401"]
-    volumes: ["../:/app:ro", "backup-data:/data"]
+    volumes: ["../:/app:ro", "${LOCAL_NODE_BINARY:?}:/usr/local/bin/node:ro", "backup-data:/data"]
     networks: [local]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4401/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

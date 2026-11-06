@@ -1,6 +1,6 @@
 # Release Report
 
-Status: **Phase A incomplete; WP-03 blocked by local disk capacity. No PR, release candidate or pilot admission.**
+Status: **Phase A in progress; WP-03 local stack verified, WP-04–WP-07 pending. No PR or pilot admission.**
 
 The report records evidence produced by actual commands. Anything not
 executed is listed as missing, not inferred.
@@ -88,3 +88,14 @@ WP-03. See the runbook for actual failure/recovery details and remaining gates.
 Final upstream refresh confirmed the same full base SHA
 `643db8c23b45c891e811a186ccd65ea7240cc225`. This report supersedes the historical
 v1 and earlier checkpoint status; it does not weaken any canonical requirement.
+
+## WP-03 recovery — 2026-11-06
+
+The prior disk blocker is resolved on the existing 7.9 GiB filesystem. A small,
+hash-locked fake runtime derived from the pinned official Node image and removal
+of one verified duplicate Node installation allow all eight real/fake containers
+to run simultaneously, with about 786 MB free. Original work/data remain preserved.
+`env:up/down/up`, lint, typecheck, 72 unit tests and six named harness/boundary
+checks pass, including process restart and backup survival across primary DB
+replacement. No broad Docker pruning, hosted service or paid call was used.
+Phase A remains in progress: schema/persistence packages WP-04–WP-07 are next.

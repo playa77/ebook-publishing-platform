@@ -1,7 +1,7 @@
 {
   "mode": "fake",
   "checkedAt": "2026-11-06T13:37:14Z",
-  "note": "Fake/local tooling only. Phase A incomplete: combined local services exceed the available disk. No live provider qualification.",
+  "note": "Explicit fake/local tooling and service wiring only; no live provider qualification.",
   "supabaseCli": {
     "version": "3.0.0",
     "sha256": "1dde91b59c65297cfa0d1322a7337230d307e4e2696d16181577c0725bc50560"
@@ -32,5 +32,10 @@
       "sha256": "4fa61f0ba0b4f89b7bec242c32ca16d3bccf69dbfef0651924a9ba8fede5f9d6",
       "hashTarget": "installed-executable"
     }
-  ]
+  ],
+  "fakeRuntime": {
+    "sourceImage": "node@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68",
+    "libraryTreeHash": "ee0baa979d075c8950997ea72918d0f2fbb41d45aa33122df16bf4610af9b3a6",
+    "nodeBinaryHash": "0adde40d1b7dfa57c8bc83cbc319758c3ec6ebba21363bb2fa752ea6b267ad1b"
+  }
 }
