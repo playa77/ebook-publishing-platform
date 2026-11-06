@@ -162,3 +162,23 @@ sections are absent from this repository.
 WP-03. WP-04–WP-07 remain sequential; WP-06 is blocked on the missing
 `SyntheticProbeRow` definition only for that table, not for the rest of
 the export/operations schema.
+
+
+## Documentation revision — 2026-11-06
+
+Active README/D1/D2/D3 replaced by concise v2 drafts and the shared
+`docs/writing-system.md` protocol. Numbered v1 baseline documents remain
+unchanged; use them only for explicitly retained subsystem detail.
+The old document-copy assertion now checks current-version status and links to
+preserved baselines rather than requiring active documents to remain v1 copies.
+Application policy/schema tests remain in force. No two-role runtime is implemented,
+no provider ID/price is invented, and no paid request or environment change made.
+Next design implementation: R1 contracts/policies, then R2 context/check harness;
+local-services WP-03 and the retained infrastructure precede R3 persistence.
+
+Verification for this documentation revision: lint and typecheck exit 0;
+3 unit files / 44 tests passed. Relative links resolve. Historical v1 files,
+application source, provider config and dependency files have no diff.
+Active README/D1/D2/D3 plus shared protocol are approximately 89% shorter by
+whitespace-word count than the previous active set; this is not a measured
+model-token reduction or inference-cost saving. Build not rerun: runtime unchanged.
