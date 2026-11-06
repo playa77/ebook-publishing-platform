@@ -371,7 +371,7 @@ describe("configuration admission", () => {
 
   it("parses every committed configuration artifact", () => {
     expect(appConfigSchema).toBeDefined();
-    expect(json("config/fonts.json")).toEqual({ fonts: [] });
+    expect(json("config/fonts.json")).toMatchObject({ fonts: expect.arrayContaining([expect.objectContaining({family:"Noto Serif",weight:400})]) });
     expect(json("config/release-evidence.json")).toMatchObject({ mode: "fake" });
   });
 });

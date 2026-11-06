@@ -5,6 +5,7 @@ const config = [
   {
     ignores: [
       ".next/**",
+      "work/**",
       "node_modules/**",
       "coverage/**",
       "playwright-report/**",

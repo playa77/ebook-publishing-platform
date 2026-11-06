@@ -2,7 +2,7 @@
   "name": "ebook-publishing-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-gestützte Autorenplattform (privater Pilot)",
+  "description": "AI-gest\u00fctzte Autorenplattform (privater Pilot)",
   "engines": {
     "node": "26.13.0",
     "npm": ">=11.20.0"
@@ -15,7 +15,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit"
+    "test:unit": "vitest run tests/unit",
+    "env:up": "node scripts/bootstrap-local.mjs up",
+    "env:down": "node scripts/bootstrap-local.mjs down",
+    "test:contracts": "vitest run tests/contracts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1161.0",
@@ -48,5 +51,6 @@
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
-  }
+  },
+  "type": "module"
 }

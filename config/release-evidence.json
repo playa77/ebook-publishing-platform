@@ -1,5 +1,36 @@
 {
   "mode": "fake",
-  "checkedAt": "2026-11-03T00:00:00Z",
-  "note": "Lokaler Werkzeugstand. Echte Tool-, Font-, Anbieter- und Restore-Nachweise folgen in den Qualifikationspaketen."
+  "checkedAt": "2026-11-06T13:37:14Z",
+  "note": "Fake/local tooling only. Phase A incomplete: combined local services exceed the available disk. No live provider qualification.",
+  "supabaseCli": {
+    "version": "3.0.0",
+    "sha256": "1dde91b59c65297cfa0d1322a7337230d307e4e2696d16181577c0725bc50560"
+  },
+  "imageDigests": {
+    "node": "add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68",
+    "java": "1eac8b8fee11ca7d6725a48bc5d41992ed1561504ebae25490d2d062847e8269"
+  },
+  "validatorVersion": "5.4.0",
+  "toolArtifacts": [
+    {
+      "name": "supabase",
+      "version": "3.0.0",
+      "url": "https://github.com/supabase/cli/releases/download/v3.0.0/supabase_3.0.0_linux_amd64.tar.gz",
+      "sha256": "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
+    },
+    {
+      "name": "java",
+      "version": "21.0.13+9",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_x64_linux_hotspot_21.0.13_9.tar.gz",
+      "sha256": "a535a1df9c6284d9618872984e026ae0352d1f7e9e0605425c0e6114f47351dd",
+      "installedTreeHash": "d790df877b44b5a9c080bdc31c27c7acbe44a220afaaf551827633c929c098ff"
+    },
+    {
+      "name": "chromium-headless-shell",
+      "version": "156.0.8078.4",
+      "url": "https://cdn.playwright.dev/builds/cft/156.0.8078.4/linux64/chrome-headless-shell-linux64.zip",
+      "sha256": "4fa61f0ba0b4f89b7bec242c32ca16d3bccf69dbfef0651924a9ba8fede5f9d6",
+      "hashTarget": "installed-executable"
+    }
+  ]
 }

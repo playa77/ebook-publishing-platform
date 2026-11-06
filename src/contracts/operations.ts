@@ -531,7 +531,7 @@ export type PublicResponseData =
   | Download
   | Empty;
 
-export type CommandResult = PublicResponseData | CanonValidation | AssetRow | Canon;
+export type CommandResult = PublicResponseData | CanonValidation | AssetRow | Canon | import("./domain").SyntheticProbeRow;
 export type QueryResult = PublicResponseData;
 export type ResponseData = PublicResponseData;
 

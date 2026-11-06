@@ -205,7 +205,7 @@ export const defaultFontManifest: FontManifest = Object.freeze(
 );
 
 // ---------------------------------------------------------------------------
-// Release evidence and admission (§13.3; staged admission blocked on D2 v1.0.1)
+// Release evidence and staged admission (§§13.3–13.4)
 // ---------------------------------------------------------------------------
 
 export const evidenceCheckSchema = z.strictObject({
@@ -246,6 +246,10 @@ export const fakeReleaseEvidenceSchema = z.strictObject({
   mode: z.literal("fake"),
   checkedAt: timeSchema,
   note: z.string().min(1).max(500),
+  supabaseCli:z.strictObject({version:z.string().min(1),sha256:hashSchema}).optional(),
+  imageDigests:z.record(z.string(),hashSchema).optional(),
+  validatorVersion:z.literal("5.4.0").optional(),
+  toolArtifacts:z.array(z.strictObject({name:z.string().min(1),version:z.string().min(1),url:urlSchema,sha256:hashSchema,installedTreeHash:hashSchema.optional(),hashTarget:z.enum(["distribution","installed-executable"]).optional()})).optional(),
 });
 
 export const liveReleaseEvidenceSchema = z.strictObject({
@@ -573,7 +577,7 @@ function ceilDiv(numerator: bigint, denominator: bigint): bigint {
 }
 
 export function inputTokenUpperBound(inputBytes: number, overhead: number): number {
-  if (!Number.isSafeInteger(inputBytes) || inputBytes < 0) {
+  if (![inputBytes,overhead].every(v=>Number.isSafeInteger(v) && v>=0)) {
     throw new RangeError("inputBytes must be a nonnegative safe integer");
   }
   return inputBytes + overhead;

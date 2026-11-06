@@ -1644,7 +1644,7 @@ export const usageReportSchema = z.strictObject({
   organizationSpent: usdSchema,
   organizationReserved: usdSchema,
   unattributedUsd: usdSchema,
-  planningRates: z.strictObject({ input: z.literal(0.11), output: z.literal(2.1) }),
+  roleCosts:z.array(z.strictObject({role:textRoleSchema,stage:modelStageSchema,cost:usdSchema.nullable(),reserved:usdSchema,acceptedWords:revSchema,generatedWords:revSchema,calls:revSchema})),
   fx: fxRecordSchema.optional(),
   marginScenarios: z.array(marginScenarioSchema).max(3),
 });

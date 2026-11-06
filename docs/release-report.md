@@ -1,6 +1,6 @@
 # Release Report
 
-Status: **local foundation only. Not a release candidate and not pilot-ready.**
+Status: **Phase A incomplete; WP-03 blocked by local disk capacity. No PR, release candidate or pilot admission.**
 
 The report records evidence produced by actual commands. Anything not
 executed is listed as missing, not inferred.
@@ -12,12 +12,9 @@ README summarizes the product; `architecture.md`, `technical-spec.md` and
 numbered files and the separate writing protocol are removed; Git preserves
 history. No compatibility reader or fallback to old specifications is required.
 
-The implemented source/config is still the v1 single-Mistral foundation.
-WP-02R/02C are the next required contract/compiler changes. Current D2 now
-defines staged qualification and operational contracts; these are design
-requirements, not implemented or live-qualified capabilities.
+The historical v1 foundation below has been followed by a fresh v2 contract/compiler checkpoint. Current work is isolated on `phase-a-canonical`. WP-03 is incomplete; WP-04–WP-07 have not started. Staged qualification contracts exist, but live execution and admission remain unimplemented/unqualified.
 
-## Current implementation evidence (v1 foundation)
+## Historical implementation evidence (v1 foundation; not current acceptance)
 
 | Area | Evidence | Status |
 |---|---|---|
@@ -54,7 +51,7 @@ requirements, not implemented or live-qualified capabilities.
 
 ## Release decision
 
-No release. Continue with WP-02R and WP-02C, then WP-03 and its dependent packages. `release-check` does not exist yet; it must
+No release. Resolve the current WP-03 environment blocker, finish its acceptance gates, then continue in dependency order through WP-07. `release-check` does not exist yet; it must
 not be represented as passing.
 
 ## Fresh v2 implementation checkpoint — 2026-11-06
@@ -69,3 +66,25 @@ with command access enabled. Fixtures test harness logic, not model quality.
 Local policies are fake, writer unselected, live admission closed. No database
 schema, local stack, migration CLI or persistence verification exists yet.
 **Phase A remains incomplete. No PR should be opened at this checkpoint.**
+
+## Current blocking verification — 2026-11-06
+
+**WP-03 incomplete, so WP-04–WP-07 are not eligible.** The 7.9 GiB writable
+filesystem and platform vfs Docker driver could not hold the combined real stack,
+separate Node fakes, tooling and workspace. Official and supported slim stack
+attempts both encountered disk exhaustion. Slim Auth/DB/Storage/mail eventually
+reached healthy status after scoped loopback-health proxy correction and cleanup,
+but adding the fake containers filled disk completely. The owned stack was stopped
+and task-only unused images removed to recover space; data volumes were retained.
+
+Current fresh passing evidence: lint, strict typing, 72 unit tests, shell build,
+and two independent real-HTTP boundary fake tests. The required four-test full
+harness has three unavailable-service failures and one tooling/browser pass.
+No clean combined lifecycle, migrations, privileges/RLS, Store guards or migration
+CLI result exists. Current schema version: **none**. Full Phase A is not complete;
+no push or PR was made. Supply more writable disk, fetch again, and continue at
+WP-03. See the runbook for actual failure/recovery details and remaining gates.
+
+Final upstream refresh confirmed the same full base SHA
+`643db8c23b45c891e811a186ccd65ea7240cc225`. This report supersedes the historical
+v1 and earlier checkpoint status; it does not weaken any canonical requirement.

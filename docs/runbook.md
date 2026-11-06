@@ -233,3 +233,79 @@ Verification at this checkpoint: `npm run lint`, `npm run typecheck`, and
 before the final fixture-only additions. Schema version: **none**, no services or
 application rows yet. Next: finish current compiler review, then WP-03. No PR or
 Phase A completion is claimed by this checkpoint.
+
+## Current handoff — WP-03 incomplete, storage blocker (2026-11-06)
+
+**Do not open a PR or advance to WP-04 on this checkpoint.** Canonical design
+files were not amended. Source/config changes remain a local implementation
+checkpoint, not evidence of completed Phase A.
+
+### Implemented draft and observed tooling
+
+- Added bootstrap `env:up/down`, private Supabase configuration (`author-platform`,
+  PostgreSQL 17, ports 56321/56322/56324, no public signup or business seeds),
+  loopback Docker network validation and separate persistent fake-service volumes.
+- Added explicit boundary-only provider and S3-shaped backup servers; no application
+  module/database access or domain fixture insertion. Added real-stack harness
+  targets, lifecycle/config scaffolding and mail/HTTP/process-fault helpers.
+- Supabase CLI 3.0.0 archive matched publisher checksums; binary SHA-256 recorded.
+  Java 21.0.13+9 matched the publisher digest; EPUBCheck 5.4.0 distribution and its
+  full companion tree were hashed. Four Noto files and their license were fetched
+  and hashed. Playwright 1.64.1 installed matching Chromium headless shell
+  156.0.8078.4; its executable hash is explicitly labeled as an executable hash.
+- `work/` holds private scratch, downloaded tools/logs/keys; generated environments
+  are ignored. Tool scratch is excluded from TypeScript/ESLint discovery so downloaded
+  vendor source is not treated as application source. No application check disabled.
+
+### Concrete environment failures and recovery
+
+The writable filesystem is **7.9 GiB**. Docker uses the platform's rootless **vfs**
+driver. The first official Supabase image pull failed `no space left on device`.
+The CLI's supported `SUPABASE_USE_SLIM_IMAGES=1` alternative was tried with exact
+catalog pins, without changing Docker's storage driver. Initial slim bring-up also
+exhausted disk. Only this task's disposable archives, downloaded upstream source,
+unused image pulls and surplus full Chromium copy were removed; original work was
+preserved. The matching Chromium headless shell remains installed.
+
+BusyBox wget in the slim images ignores `no_proxy`: an isolated test against an
+unbound loopback port returned proxy HTTP 403, while an explicitly empty lowercase
+proxy returned the expected local connection refusal. The bootstrap's scoped Docker
+launcher adds empty lowercase proxy variables only for named local Supabase
+containers. Uppercase proxy configuration and host/other-container networking remain
+unchanged. With this adjustment, real DB/Auth/Storage/mail reached healthy status.
+
+At that point only about **544 MiB** remained. `npm run env:up` could not additionally
+create the separate Node fake containers: disk reached 100%, even preventing the
+sandbox launcher from allocating its temporary mount directory. Recovery commands
+removed only this task's unused Node image; `npm run env:down` then stopped the owned
+stack while retaining its data/independent volumes. Approximately 2.2 GiB is free
+with the stack stopped. No unrelated files, original checkout, storage driver or
+existing application data were modified. Protected platform tmpfs mounts were found
+unwritable and were left unchanged. Reflink copying is unsupported.
+
+### Verification and explicit remaining work
+
+Fresh passing checks: `npm run lint`, `npm run typecheck`, `npm run test:unit`
+(72 tests/seven files), and `npm run build` including TypeScript/prerendering.
+`tests/contracts/boundary-fakes.test.ts` passes two independent real-HTTP tests:
+provider request validation and state surviving process restart; S3 SDK PUT/GET/LIST
+and bytes surviving backup-server restart. A trailing-slash listing defect found
+by that test was fixed and the suite rerun successfully.
+
+`tests/contracts/harness.test.ts` is **not passing**: with the stack safely stopped,
+its DB/provider/backup service checks fail connection refusal. Its actual pinned
+font/Java/EPUBCheck/Chromium check passes. No skipped check is treated as success.
+The combined healthy `env:up` → full harness → `env:down` → `env:up` lifecycle and
+backup survival across primary replacement remain unverified/incomplete. Fonts,
+Java and fake HTTP checks alone do not complete WP-03.
+
+Required continuation: provide enough writable disk for Docker plus workspace
+(recommend at least 20 GiB), fetch current upstream again, then finish WP-03 before
+WP-04–WP-07. Schema version is **none**: no app migrations, typed Store, transaction
+implementation or migration CLI has been delivered. No paid inference, hosted
+provisioning, real invitation, deployment, push or PR occurred.
+
+A final `git fetch --prune origin` and `ls-remote --symref origin HEAD` again returned
+`main` at `643db8c23b45c891e811a186ccd65ea7240cc225`; no upstream reconciliation was
+needed. Original `work` checkout remains preserved. Do not reuse historical test
+counts/schema claims as acceptance of the unfinished packages.
