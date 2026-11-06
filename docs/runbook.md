@@ -1,14 +1,15 @@
 # Runbook — Implementation Handoff
 
-This file is the per-package handoff required by D3 §2.2. It records what
-was actually executed, not what the specifications intend.
+This file records implementation evidence under current D3 §2.2. It does not
+define requirements. README and the three canonical design documents own those.
+Earlier WP entries describe their implementation checkpoint; current next work
+is WP-02R/02C, not repeating old bootstrap or following old model contracts.
 
 ## WP-01 — Repository and exact dependency lock
 
 **Status:** complete for the local toolchain and German shell.
-**Baseline documents:** D1 v1.0.0, D2 v1.0.0, D3 v1.0.0 (the copies in
-`docs/architecture.md`, `docs/technical-spec.md`,
-`docs/implementation-roadmap.md` are byte-identical to the accepted files).
+**Baseline documents:** D1 v1.0.0, D2 v1.0.0, D3 v1.0.0 (the documents matched that baseline at the time of this checkpoint; current
+canonical documents have since been revised in place).
 **Runtime:** Node.js 26.13.0, npm 11.20.0, Linux x64, Docker 29.9.2
 (available but not used by this package).
 
@@ -80,8 +81,8 @@ rule was used.
 
 ### Next eligible package
 
-WP-03 (local services, boundary harness, tool/font/validator locking).
-WP-04–WP-07 remain sequential after it.
+WP-02R/02C migrate the existing contracts and supply the packet/check compiler;
+then WP-03 local services precedes WP-04–WP-07.
 
 ## WP-02 — Closed contracts, policies and errors
 
@@ -142,9 +143,9 @@ sections are absent from this repository.
 
 - **Missing revised documents:** D3 references D1 v1.1.0 and D2 v1.0.1
   (§13.4 staged admission, §16.6, seams M26/T21, `SyntheticProbeRow`).
-  Those files are not present. The probe types, `probeStart` /
-  `probeAdvance` commands and staged admission were deliberately not
-  invented. WP-06/WP-33 will require the revised documents.
+  Those definitions were absent at this checkpoint. Current D2 §13.4 now
+  defines probeStart/probeAdvance and staged admission; implementation remains
+  required in the current WP-06/WP-33 scope.
 - **BFL contract:** implemented from D2 v1.0.0 §4.2 (EU host, exact
   model path, 1600×2560 JPEG, no `n` field, no extra gateway fee), not
   from the absent D1 v1.1.0.
@@ -159,26 +160,31 @@ sections are absent from this repository.
 
 ### Next eligible package
 
-WP-03. WP-04–WP-07 remain sequential; WP-06 is blocked on the missing
-`SyntheticProbeRow` definition only for that table, not for the rest of
-the export/operations schema.
+WP-02R/02C, then WP-03 and dependent schema work. Current D2 §13.4 supplies
+the SyntheticProbeRow contract; no external revised document is needed.
 
 
-## Documentation revision — 2026-11-06
 
-Active README/D1/D2/D3 replaced by concise v2 drafts and the shared
-`docs/writing-system.md` protocol. Numbered v1 baseline documents remain
-unchanged; use them only for explicitly retained subsystem detail.
-The old document-copy assertion now checks current-version status and links to
-preserved baselines rather than requiring active documents to remain v1 copies.
-Application policy/schema tests remain in force. No two-role runtime is implemented,
-no provider ID/price is invented, and no paid request or environment change made.
-Next design implementation: R1 contracts/policies, then R2 context/check harness;
-local-services WP-03 and the retained infrastructure precede R3 persistence.
+## Canonical design revision — 2026-11-06
 
-Verification for this documentation revision: lint and typecheck exit 0;
-3 unit files / 44 tests passed. Relative links resolve. Historical v1 files,
-application source, provider config and dependency files have no diff.
-Active README/D1/D2/D3 plus shared protocol are approximately 89% shorter by
-whitespace-word count than the previous active set; this is not a measured
-model-token reduction or inference-cost saving. Build not rerun: runtime unchanged.
+README is the overview. Only `architecture.md`, `technical-spec.md` and
+`implementation-roadmap.md` are normative design inputs. All contracts and the
+scene/benchmark protocol are integrated into those documents; superseded copies
+and the separate protocol file are removed. Previous versions remain in Git.
+The earlier WP-01/02 entries above record implemented v1 behavior, not current
+requirements: single-Mistral policy, byte-identical document-copy tests and
+missing-document blockers described there no longer govern implementation.
+
+Current source/config still implements the v1 foundation. Next: WP-02R migrates
+closed role policies/contracts; WP-02C implements pure packet/check helpers.
+WP-03 onward supplies real services/persistence before the WP-16 scene path.
+The missing revised-document contracts are now defined in current D2 §§13.4
+and 16.6; their code remains unimplemented. No paid call or environment change
+was made for this documentation correction.
+
+Correction verification: lint/typecheck exit 0; 44 tests pass in three files.
+The canonical-source test rejects duplicate design filenames and the removed
+protocol file. Local-link/section/package/table audit passes: all 41 original
+packages and every original persistent table are retained, with WP-02R/02C added.
+`git diff --check` passes; application source/config and dependency files have
+no diff. No build/live benchmark was rerun for this documentation-only change.

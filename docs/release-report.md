@@ -5,18 +5,17 @@ Status: **local foundation only. Not a release candidate and not pilot-ready.**
 The report records evidence produced by actual commands. Anything not
 executed is listed as missing, not inferred.
 
-## Documentation revision — 2026-11-06
+## Canonical design — 2026-11-06
 
-Active README/D1/D2/D3 now describe the proposed two-role design; shared scene
-protocol, checking harness and benchmark are in `writing-system.md`. Historical
-numbered v1 files are preserved unchanged. Existing missing-version references
-are superseded by the current explicit baseline map; historical implementation
-gaps remain until implemented.
+README summarizes the product; `architecture.md`, `technical-spec.md` and
+`implementation-roadmap.md` contain the complete current v2 design. Prior
+numbered files and the separate writing protocol are removed; Git preserves
+history. No compatibility reader or fallback to old specifications is required.
 
-No runtime policy, provider configuration, live qualification or application
-behavior changed. `config/providers.json` and current contracts still implement
-the v1 single-Mistral policy. R1 must migrate them before two-role execution.
-No new model call or savings claim was verified in this documentation task.
+The implemented source/config is still the v1 single-Mistral foundation.
+WP-02R/02C are the next required contract/compiler changes. Current D2 now
+defines staged qualification and operational contracts; these are design
+requirements, not implemented or live-qualified capabilities.
 
 ## Current implementation evidence (v1 foundation)
 
@@ -42,21 +41,18 @@ No new model call or savings claim was verified in this documentation task.
 - `npm audit`: 16 moderate, 0 high, 0 critical. All findings are in
   development-only ESLint tooling and are recorded for later review; no
   production dependency is implicated.
-- D2's exact ESLint 10.14.0 and TypeScript 7.0.2 pins are incompatible
-  with `eslint-config-next@16.4.3`'s bundled plugins. Exact compatible
-  replacements are recorded in `docs/runbook.md`.
-- D3 cites D1 v1.1.0 and D2 v1.0.1 (including §13.4 staged admission,
-  §16.6, seams M26/T21, `SyntheticProbeRow`). Those documents are not in
-  this repository. Affected probe/admission contracts were not invented;
-  they remain blocked until the revised documents are supplied.
+- Earlier proposed compiler/lint pins were incompatible with the bundled
+  plugins. Current D2 §3 now records the implemented compatible pins,
+  TypeScript 6.0.3 and ESLint 9.39.5; see the runbook for original evidence.
+- Staged qualification, M26/T21, SyntheticProbeRow and operational closure are
+  specified in current D2 §§13.4 and 16.6; implementation and tests remain missing.
 - The fixed model, privacy filters, cover cap, and run-scope bounds are
   encoded as closed schemas and covered by unit tests. A submitted
   command body cannot relax them.
-- WP-02 is complete against D2 v1.0.0. Probe/admission contracts from
-  D2 v1.0.1 §13.4 are absent and were not invented.
+- WP-02 implemented the previous single-model foundation. WP-02R must migrate
+  it to current D2; the new probe/admission design is not implemented yet.
 
 ## Release decision
 
-No release. Continue with WP-03 after supplying or accepting the
-document-version gap above. `release-check` does not exist yet; it must
+No release. Continue with WP-02R and WP-02C, then WP-03 and its dependent packages. `release-check` does not exist yet; it must
 not be represented as passing.
