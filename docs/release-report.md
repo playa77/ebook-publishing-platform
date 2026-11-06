@@ -1,6 +1,6 @@
 # Release Report
 
-Status: **Phase A in progress; WP-03 local stack verified, WP-04–WP-07 pending. No PR or pilot admission.**
+Status: **Phase A in progress; local services and schema verified, WP-07 pending. No PR or pilot admission.**
 
 The report records evidence produced by actual commands. Anything not
 executed is listed as missing, not inferred.
@@ -113,3 +113,12 @@ Versions 3–4 and eight named core/runtime checks pass with lint and strict typ
 V2 role/source/check tables, active-run uniqueness, deferred references and integer
 finance storage exist. Production queue/metering handlers remain later owners;
 no fake business rows or financial-race completion claim is used as evidence.
+
+## WP-06 checkpoint
+
+All six schema migrations and the four complete-schema checks pass with lint and
+typing, including a non-superuser replay and an actual SELECT-only backup login.
+39 tables have explicit security policies; no business fixtures are seeded.
+Probe/asset/ownership/immutability/retention primitives exist. The migration CLI,
+Store composition and transaction framework are still pending WP-07; a schema
+checkpoint alone does not establish Phase A completion.

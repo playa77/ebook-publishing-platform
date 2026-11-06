@@ -381,3 +381,29 @@ Contract review also aligned the exact D2 §8.12 mutation fields and added the
 Lint/typecheck and the named core/runtime suites passed (eight tests), applying
 versions 1–4 from empty app state. These are schema/catalog/security checks, not
 populated financial-race or manuscript evidence. Next WP-06, then Store/CLI WP-07.
+
+## WP-06 — complete schema/security (D1/D2/D3 2.0.0)
+
+Migrations 005–006 add covers, account/project exports, deletion/backup journals,
+the authoritative organization-only SyntheticProbeRow, retention indexes and
+bounded maintenance helpers. Deferred constraints cover asset ownership/readiness,
+probe attempt attribution, task/packet identity and financial attribution.
+Append-only, received-result, request-input and run-authorization guards protect
+immutable state. Runtime grants do not permit arbitrary owner/role changes.
+Activation derives role/budget from a persisted Auth invitation; bootstrap intent
+is migrator-only. Deletion permissions require a locked persisted privacy job and
+an independent-marker reference. These primitives are not a claim that the later
+Identity/Privacy/qualification handlers have been implemented.
+
+The immutable default policy has an explicit reserved system-provenance UUID,
+not a seeded operator AccountRow. The completed deletion journal keeps its original
+opaque owner after removal; Auth/account removal cannot create a new account or
+refund native expense. Backup uses SELECT-only explicit policies under FORCE RLS,
+not BYPASSRLS or a hosted superuser. Auth restoration remains separately qualified.
+
+Actual lint/typecheck and `schema-complete.test.ts` pass (four tests). The suite
+applies exactly six migrations and checks all 39 application/metadata tables,
+private probe/maintenance permissions and actual backup-login denials. It then
+replays all six through a non-superuser/non-BYPASSRLS migration login with explicit
+preprovisioned Auth REFERENCES/schema grants. No account, manuscript, completed
+job or fake financial state is inserted. Current schema checkpoint: 6. Next WP-07.
