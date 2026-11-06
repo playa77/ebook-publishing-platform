@@ -51,7 +51,7 @@ it("replays the schema using a non-superuser migration login with explicit prepr
  try{
   const exists=(await c.query("select 1 from pg_roles where rolname=$1",[url.username])).rowCount;
   const sql=(await c.query<{sql:string}>(exists?"select format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD %L',$1::text,$2::text) sql":"select format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD %L',$1::text,$2::text) sql",[url.username,url.password])).rows[0]!.sql;
-  await c.query(sql);await c.query("grant app_migrator to ebook_local_migrator with inherit true,set true");await c.query("grant create on database postgres to app_migrator");
+  await c.query(sql);await c.query("grant app_migrator to ebook_local_migrator with inherit true,set true");await c.query((await c.query<{sql:string}>("select format('GRANT CREATE ON DATABASE %I TO app_migrator',current_database()) sql")).rows[0]!.sql);
  }finally{c.release();}
  const restricted=new Pool({connectionString:url.toString(),max:1});try{
   const role=(await restricted.query<{rolsuper:boolean;rolbypassrls:boolean}>("select rolsuper,rolbypassrls from pg_roles where rolname=current_user")).rows[0];expect(role).toEqual({rolsuper:false,rolbypassrls:false});

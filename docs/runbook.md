@@ -5,7 +5,105 @@ define requirements. README and the three canonical design documents own those.
 The current handoff below supersedes the historical checkpoints that follow.
 Canonical D1/D2/D3 v2.0.0 govern; implementation history is not a specification.
 
-## Current Phase A handoff — 2026-11-06
+## Current Phase B handoff — 2026-11-06
+
+The workspace was updated first: `git fetch origin`, then fast-forward from
+`643db8c` to `0653d82` (merged Phase A). `npm ci` ran with the exact Node
+26.13.0/npm 11.20.0 toolchain. On this execution host, prepend
+`/workspace/.setup-tools/node-v26.13.0-linux-x64/bin` to PATH. The runtime and
+network were checked with the cloud-environment runtime skill. Docker, real
+local Auth/DB/Storage, mail capture and persistent provider/backup fakes were
+started with `npm run env:up`; a stop/start retained their data.
+
+WP-08–12 now have implemented application paths. No public signup, live model
+qualification, paid call, hosted deployment or later writing workflow is claimed.
+Use the current checkout `/workspace/ebook-publishing-platform`; the Phase A
+checkout/branch references below are historical evidence only.
+
+```sh
+npm ci
+npm run env:up
+npm run cli -- migrate
+npm run cli -- bootstrap-operator --email "$OPERATOR_EMAIL"
+npm run dev
+# In a second terminal with the same toolchain:
+npm run worker
+```
+
+Bootstrap persists an encrypted intent before contacting Auth. Open the captured
+invitation link at `/zugang`, confirm it and set a password. Roles come from the
+application account, never JWT user metadata. Authors are invited from `/betrieb`.
+Local email templates contain token hashes; the browser removes them from history.
+Session cookies are HttpOnly, SameSite=Lax and Secure on HTTPS; API writes require
+an exact Origin, CSRF double-submit token and Idempotency-Key. Operator changes
+require a recent Auth AMR timestamp, unaffected by token refresh. Disable takes
+effect on the next API request. A failed remote sign-out still clears local
+session cookies. Production trusted-address extraction is not configured by this
+local implementation; hosted readiness must verify the provider's IP controls.
+
+Migrations 001–006 retain their original bytes/checksums. Forward migrations
+007–012 provide runtime capabilities, correct the counter-period representation,
+fix queue hold states, enforce cover-inclusive cost totals/run/rewrite bounds,
+and add bounded, content-free operator/usage projections. The migration CLI now
+reports schema version 12. Schema compatibility remains checksum-checked.
+
+Projects use locked allowance checks, metadata versions and durable idempotent
+command receipts. Uploads accept bounded raw or multipart original files,
+server-generated private keys, pending/ready publication, read-back SHA-256 and
+ownership checks before service-key access/signing. Retry resumes the same asset;
+ready objects are immutable. Archive frees the active-project slot and retains
+cost history. Archive is one-way in this slice; restore/unarchive is not exposed.
+
+Only `identity.invite` and `cost.lookup` are claimable. Leases, heartbeat, fences,
+slots and continuation construction are persisted. Unknown invitation delivery
+reconciles the original intent with Auth before sending anything again. Cost
+lookups run at approximately 30 s, 2 min, 10 min and 1 h, then hold for operator
+attention. Scheduler registers no unimplemented periodic work.
+
+The text gateway validates captured role policies, context/output limits and
+conservative cold-cache reservations before a POST; persists dispatch/receipt;
+reuses received results; and never repeats an uncertain paid POST. Prose-only
+writer requests require an explicitly selected writer policy. The checked-in
+writer remains null. Unknown/mismatched charges stay held. Domain response
+validation follows durable receipt. German generated words use the shared
+`Intl.Segmenter` rule; accepted/retained measures are separate. WP-15 must verify
+the full persisted ModelTask caller and financial races through legitimate work;
+these tests do not manufacture attempts or manuscripts to claim that acceptance.
+
+Verification commands:
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+`npm test` first creates a new isolated PostgreSQL database and copies the real
+provider Auth schema without users/secrets. It runs the named core/runtime/full
+schema, Store and harness suites there, then unit, provider, ownership and all
+Phase B integration suites against legitimate local application journeys.
+`npm run test:schema` runs the isolated subset; `npm run test:contracts` also
+includes ownership and external-boundary contracts. The old direct schema-reset
+commands below must not target a populated working application. Isolated test
+databases are retained, and their names are printed without credentials.
+The backup harness now verifies independent bytes after switching to a newly
+created primary test target, without resetting the working Supabase stack.
+
+Integration tests start and stop their own web and worker processes. They use
+captured mail, separate browser contexts, real Storage, and RLS checks. Test
+operator cookies and diagnostic logs are confined to ignored `work/` files.
+Existing local author data is retained. Broad teardown was rejected by automatic
+approval review; the isolated-database runner was the safe replacement.
+
+Final verification passed: lint, typecheck, all 124 tests (23 isolated schema/Store/harness plus 101 remaining checks), production build and whitespace validation.
+
+The next package is WP-13. `doctor`, live probes, imports/parsing, planning,
+manuscript generation, image inference, export, deletion and recovery/backup
+application journeys remain outside this handoff. Phase A evidence below remains
+historical; the Phase B release report is the current result.
+
+## Historical Phase A handoff — 2026-11-06
 
 Phase A through WP-07, including WP-02R/WP-02C, is implemented. Next eligible
 package is WP-08 (real operator identity); no legitimate business state is seeded.

@@ -176,7 +176,7 @@ export type BackupObject = z.infer<typeof backupObjectSchema>;
 // Public commands (§6.2–6.4)
 // ---------------------------------------------------------------------------
 
-const projectCommand = <T extends z.ZodTypeAny>(op: string, input: T) =>
+const projectCommand = <const O extends string, T extends z.ZodTypeAny>(op: O, input: T) =>
   z.strictObject({
     op: z.literal(op),
     input,
@@ -195,7 +195,7 @@ const runInputSchema = z.strictObject({
 
 const projectCreateSchema = z
   .strictObject({
-    title: titleSchema,
+    title: z.string().max(250).default(""),
     mode: modeSchema,
     genre: genreSchema,
   })
@@ -275,7 +275,7 @@ const publicCommandOptions = [
   projectCommand(
     "projects.update",
     z.strictObject({
-      title: titleSchema.optional(),
+      title: z.string().max(250).optional(),
       authorName: authorNameSchema.optional(),
       genre: genreSchema.optional(),
       frontMatter: editorDocSchema.optional(),

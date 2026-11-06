@@ -3,6 +3,10 @@ import { buildApp, readConfig } from "../composition/root";
 import { makeFault, toFault, type Outcome } from "../contracts/errors";
 import { cliCommandSchema, type CliCommand, type CliResult } from "../contracts/operations";
 export function parseCli(args: string[], requestId: string): Outcome<CliCommand> {
+    if (args.length === 3 && args[0] === 'bootstrap-operator' && args[1] === '--email') {
+        const parsed = cliCommandSchema.safeParse({ command: 'bootstrap-operator', operatorEmail: args[2] });
+        return parsed.success ? { ok: true, value: parsed.data } : { ok: false, error: makeFault('INVALID_INPUT', requestId) };
+    }
     if (args.length !== 1 || args[0] !== "migrate")
         return { ok: false, error: makeFault("INVALID_INPUT", requestId, { field: "cli.command" }) };
     return { ok: true, value: cliCommandSchema.parse({ command: "migrate" }) };

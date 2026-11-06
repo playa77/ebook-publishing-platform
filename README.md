@@ -40,20 +40,27 @@ Gesamtkosten. API-IDs und Fähigkeiten sind vor Livebetrieb zu verifizieren.
 
 ## Tatsächlicher Stand und Entwicklung
 
-Implementiert sind Next.js-Oberfläche, geschlossene Verträge und Richtlinien.
-Datenbank, Anmeldung, Worker, Zweirollen-Pipeline und EPUB-Export fehlen noch.
-Die Laufzeitkonfiguration enthält weiterhin die alte Mistral-Policy;
-diese Dokumentrevision ändert keine Provider-Konfiguration.
+Implementiert sind die Grundlagen und Phase B bis WP-12: echte lokale
+Supabase-Sitzungen, Operator-Bootstrap und Einladungsworker, private Projekte
+und Originaldateien, Richtlinien und genaue Kostenreservierungen sowie der
+dauerhafte Text-Gateway mit Kostenabfrage. Die Schreibabläufe ab WP-13 fehlen
+noch. Der Gateway ist mit unabhängigen HTTP-Fakes geprüft; der erste echte
+persistierte Planungsaufrufer folgt mit WP-15. Ein Live-Schreibmodell ist
+weiterhin nicht ausgewählt. Es wurden keine bezahlten Aufrufe ausgeführt.
 
 Node.js **26.13.0**, npm **11.20.0**:
 
 ```bash
 npm ci
+npm run env:up
+npm run cli -- migrate
 npm run lint
 npm run typecheck
 npm test
 npm run build
 npm run dev
+# In einem zweiten Terminal:
+npm run worker
 ```
 
 Die Zielanwendung verwendet Next.js/React, Supabase und einen dauerhaften

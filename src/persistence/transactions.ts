@@ -8,7 +8,7 @@ export async function inTransaction<T>(pool: Pool, context: CallContext, work: (
     const client = await pool.connect();
     let broken = false;
     try {
-        await client.query(readOnly ? "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" : "BEGIN ISOLATION LEVEL REPEATABLE READ");
+        await client.query(readOnly ? "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" : "BEGIN ISOLATION LEVEL READ COMMITTED");
         await client.query("SET LOCAL TIME ZONE 'UTC'");
         const owner = context.actor.role === "author" || context.actor.role === "operator" ? context.actor.accountId : "";
         await client.query("select set_config('app.account_id',$1,true),set_config('app.job_id','',true),set_config('app.fence','',true),set_config('app.project_id','',true),set_config('app.retention_deletion','',true)", [owner]);
@@ -36,7 +36,7 @@ export async function inTransaction<T>(pool: Pool, context: CallContext, work: (
         client.release(broken);
     }
 }
-export const migrationFiles = ["001_roles.sql", "002_core.sql", "003_canon_runs.sql", "004_jobs_usage.sql", "005_exports_ops.sql", "006_retention.sql"] as const;
+export const migrationFiles = ["001_roles.sql", "002_core.sql", "003_canon_runs.sql", "004_jobs_usage.sql", "005_exports_ops.sql", "006_retention.sql", "007_private_application.sql", "008_metering.sql", "009_metering_bounds.sql", "010_rewrite_allowances.sql", "011_runtime_projections.sql", "012_active_invitation_policy.sql"] as const;
 export type MigrationState = {
     version: number;
     checksum: string;
@@ -44,8 +44,10 @@ export type MigrationState = {
 export function validateMigrationState(rows: MigrationState[], checksums: string[], requestId: string): void {
     if (rows.length > migrationFiles.length)
         throw makeFault("INVALID_INPUT", requestId, { field: "schema.version" });
-    rows.forEach((row, i) => { if (row.version !== i + 1 || row.checksum !== checksums[i])
-        throw makeFault("INVALID_INPUT", requestId, { field: "schema.compatibility" }); });
+    rows.forEach((row, i) => {
+        if (row.version !== i + 1 || row.checksum !== checksums[i])
+            throw makeFault("INVALID_INPUT", requestId, { field: "schema.compatibility" });
+    });
 }
 export async function migrate(pool: Pool, requestId: string, localLogins?: {
     webUrl: string;
