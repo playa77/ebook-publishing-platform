@@ -36,3 +36,9 @@ enable_confirmations = true
 enabled = false
 [analytics]
 enabled = false
+[auth.email.template.invite]
+subject = "Dein privater Zugang zum Autorenstudio"
+content_path = "./supabase/templates/invite.html"
+[auth.email.template.recovery]
+subject = "Autorenstudio: Passwort zurücksetzen"
+content_path = "./supabase/templates/recovery.html"

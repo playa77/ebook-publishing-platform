@@ -1,5 +1,72 @@
 # Release Report
 
+Status: **Phase B implemented through WP-12; local verification only.**
+Updated on 2026-11-06 against canonical D1/D2/D3 v2.0.0.
+
+## Phase B scope
+
+The environment was updated before implementation: fetched `origin/main`,
+fast-forwarded to merged Phase A commit `0653d82`, ran `npm ci` with Node
+26.13.0/npm 11.20.0, and provisioned/restarted the locked local services.
+The six original migrations retain their checksums. Forward migrations 007–012
+bring the current schema to version 12.
+
+| Work package | Implemented and exercised locally |
+|---|---|
+| WP-08 | Persisted operator bootstrap; real Auth invitation/token confirmation, password, sign-in, recovery/sign-out; request-specific cookies, database eligibility, CSRF/origin/idempotency controls, rate buckets and recent-auth enforcement. |
+| WP-09 | Durable claims/leases/heartbeat/fences/slots/continuations; separate worker process; encrypted invite intent, reconciliation against Auth, verified author activation, disable, duplicate request and worker restart checks. |
+| WP-10 | Owned create/read/update/archive and version guards; original-file ingress with immutable private object keys, pending/ready publication, read-back checksums, short-lived signing; separate-author application and real PostgreSQL RLS denial. |
+| WP-11 | Exact integer microdollar bounds/fees, locked reservations/settlement, cover-inclusive totals, stable budget keys, run/rewrite counters, immutable policy definitions with audited adoption/restoration, dynamic allowance/usage projections. |
+| WP-12 | Strict role-qualified OpenRouter transport and actual independent fake HTTP traffic; context/output/price/privacy/model controls; durable attempt/result paths, no replay after uncertain POST, bounded cost lookup and held unknown charges; writer-null refusal. |
+
+The tests caught and fixed two material problems: repeatable-read snapshots
+could defeat the active-project cap after an advisory-lock wait; and new invitees
+could inherit a historical policy after the operator restored a previous policy.
+Mutation checks now use fresh read-committed state under locks, and activation
+uses the operator's current adopted policy. Both have integration coverage.
+
+## Verification and scope of evidence
+
+Final verification on 2026-11-06:
+
+| Command | Result |
+|---|---|
+| `npm run lint` | Passed |
+| `npm run typecheck` | Passed |
+| `npm test` | 124 tests passed: 23 isolated schema/Store/harness checks plus 101 unit/boundary/ownership/browser/integration checks; no skipped tests |
+| `npm run build` | Passed; production routes and Proxy compiled without warnings |
+| `git diff --check` | Passed |
+
+The final schema runner retained its isolated database; the working application
+and existing synthetic accounts were not erased.
+The complete test runner executes all required named schema/Store/harness suites
+in a newly created isolated database containing the real provider Auth schema,
+then unit, provider, ownership, browser and integration suites. It never resets
+the populated working application. Test databases and synthetic accounts remain
+local; no credentials, token hashes or private logs are committed.
+
+The browser test signs in through the real German form, verifies HttpOnly cookies
+and checks that a separate browser context stays anonymous. The API journeys
+exercise real local Auth/Storage/database services and an independent worker.
+Adapter tests validate orchestrator and prose-only writer bodies over actual HTTP,
+including unknown billing, charged timeout, model mismatch and SSRF denial.
+
+Financial concurrency and durable ModelTask orchestration are **source-integrated,
+not yet end-to-end qualified**: WP-15 supplies the first legitimate persisted
+inference caller. No fake AttemptRows or business-success fixtures were inserted
+to claim that milestone. Accepted/retained manuscript word accounting has no
+nonzero manuscript journey before the writing packages. Live writer qualification,
+real provider pricing/route evidence and hosted trusted-IP controls remain gates.
+
+No paid calls, hosted deployment, production migration or pilot admission occurred.
+`config/providers.json` still contains the local fake orchestrator and null writer.
+Planning, parsing, scene generation and all later packages remain unimplemented.
+Continue with WP-13, following the roadmap's dependency gates.
+
+---
+
+## Historical Phase A report
+
 Status: **Phase A complete through WP-07, including WP-02R and WP-02C.**
 Verified locally on 2026-11-06 against canonical D1/D2/D3 v2.0.0. This is a
 foundation PR, not a pilot release or implementation of later business handlers.

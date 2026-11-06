@@ -30,14 +30,14 @@ beforeAll(async () => {
     initial = execFileSync(process.execPath, cliArgs, { encoding: "utf8", timeout: 60000 });
 });
 afterAll(async () => { await runtime.end(); await admin.end(); });
-it("executes the production CLI/root from an empty schema and reports six real migrations", async () => {
-    expect(initial).toContain("Version 6; 6 Migrationen angewendet");
-    expect(execFileSync(process.execPath, cliArgs, { encoding: "utf8", timeout: 60000 })).toContain("Version 6; 0 Migrationen angewendet");
+it("executes the production CLI/root from an empty schema and reports all implemented migrations", async () => {
+    expect(initial).toContain(`Version ${migrationFiles.length}; ${migrationFiles.length} Migrationen angewendet`);
+    expect(execFileSync(process.execPath, cliArgs, { encoding: "utf8", timeout: 60000 })).toContain(`Version ${migrationFiles.length}; 0 Migrationen angewendet`);
     const actual = (await admin.query<{
         version: number;
         checksum: string;
     }>("select version,checksum from app.schema_migrations order by version")).rows;
-    expect(actual.map(r => r.version)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(actual.map(r => r.version)).toEqual(migrationFiles.map((_,i)=>i+1));
     actual.forEach((r, i) => expect(r.checksum).toBe(createHash("sha256").update(readFileSync(`migrations/${migrationFiles[i]}`)).digest("hex")));
     expect((await admin.query("select * from app.accounts")).rows).toEqual([]);
 });
@@ -109,7 +109,7 @@ it("rejects incompatible migration evidence without applying or erasing schema",
         expect(result.stderr).toContain("INVALID_INPUT");
         expect((await admin.query<{
             n: string;
-        }>("select count(*)::text n from app.schema_migrations")).rows[0]?.n).toBe("6");
+        }>("select count(*)::text n from app.schema_migrations")).rows[0]?.n).toBe(String(migrationFiles.length));
     }
     finally {
         await admin.query("update app.schema_migrations set checksum=$1 where version=6", [saved]);
@@ -119,7 +119,7 @@ it("constructs only reachable foundation capabilities and leaves future commands
     const app = buildApp("web", readConfig("web"), () => { });
     try {
         const reply = await app.http.dispatch({ method: "GET", path: "/api/v1/projects", query: {}, headers: {}, body: new Uint8Array(), cookies: {} });
-        expect(reply.status).toBe(404);
+        expect(reply.status).toBe(401);
         expect((await app.worker.tick({ workerId: "not-implemented", now: clock.now(), draining: false })).ok).toBe(false);
         const result = await app.cli.execute({ command: "doctor" }, context());
         expect(result.ok && result.value.passed).toBe(false);

@@ -54,13 +54,13 @@ it("stores and lists real independent backup bytes through the S3 wire protocol"
  const client=new S3Client({endpoint:required("FAKE_BACKUP_URL"),region:"eu-central-1",forcePathStyle:true,credentials:{accessKeyId:"fake-local-access",secretAccessKey:"fake-local-secret"},maxAttempts:1});
  const key=`harness/${randomUUID()}.bin`,bytes=Buffer.from("independent synthetic boundary");
  try{await client.send(new PutObjectCommand({Bucket:"local-backup",Key:key,Body:bytes}));
- const db=required("DATABASE_URL_MIGRATE");if(new URL(db).hostname!=="127.0.0.1"||new URL(db).port!=="56322")throw new Error("Refusing nonlocal reset");
- const pool=new Pool({connectionString:db,max:1});try{
-  if((await pool.query<{count:string}>("select count(*)::text as count from auth.users")).rows[0]?.count!=="0")throw new Error("Refusing reset of populated Auth");
-  const table=await pool.query<{present:boolean}>("select to_regclass('app.accounts') is not null as present");if(table.rows[0]?.present && (await pool.query<{count:string}>("select count(*)::text as count from app.accounts")).rows[0]?.count!=="0")throw new Error("Refusing reset of populated application");
- }finally{await pool.end();}
- execFileSync("work/bin/supabase",["db","reset","--local","--network-id","ebook_phase_a_local"],{env:{...process.env,SUPABASE_USE_SLIM_IMAGES:"1",PATH:`${process.cwd()}/work/docker-shim:${process.env.PATH}`},stdio:"pipe",timeout:90000});
- execFileSync("work/bin/supabase",["seed","buckets"],{env:process.env,stdio:"pipe",timeout:15000});
+ // Replace the test's primary target with a newly created real PostgreSQL DB.
+ // Never reset the working Supabase stack after legitimate author journeys exist.
+ const db=required("DATABASE_URL_MIGRATE");if(new URL(db).hostname!=="127.0.0.1"||new URL(db).port!=="56322")throw new Error("Refusing nonlocal database test");
+ const pool=new Pool({connectionString:db,max:1});const replacement=`ebook_harness_${randomUUID().replaceAll('-','')}`;
+ try{await pool.query(`create database "${replacement}"`);}finally{await pool.end();}
+ const replacementUrl=new URL(db);replacementUrl.pathname='/'+replacement;
+ const fresh=new Pool({connectionString:replacementUrl.toString(),max:1});try{expect((await fresh.query("select to_regclass('app.accounts') as present")).rows[0].present).toBeNull();}finally{await fresh.end();}
  const result=await client.send(new GetObjectCommand({Bucket:"local-backup",Key:key}));expect(Buffer.from(await result.Body!.transformToByteArray())).toEqual(bytes);expect((await client.send(new ListObjectsV2Command({Bucket:"local-backup",Prefix:"harness/"}))).Contents?.some(i=>i.Key===key)).toBe(true);}finally{client.destroy();}
 },120000);
 it("verifies pinned fonts, actual Java/EPUBCheck and matching Chromium",async()=>{

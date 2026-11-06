@@ -51,7 +51,7 @@ export async function startProviderServer(options:{port:number;host:string;direc
   if(script.scenario==="charged_timeout"){req.socket.destroy();return;}
   if(script.delayMs)await new Promise(r=>setTimeout(r,script.delayMs));
   if(kind==="image")return send(200,{id:task.id,polling_url:`${options.origin}/poll/${task.id}`});
-  return send(200,{id:task.id,model:script.scenario==="wrong_model"?"fake/wrong":task.model,reasoning:{effort:(raw as z.infer<typeof textBody>).reasoning.effort},choices:[{message:{role:"assistant",content:script.scenario==="malformed"?"{broken":task.replyText},finish_reason:"stop"}],usage:{prompt_tokens:50,completion_tokens:20,total_tokens:70,cost:script.scenario==="missing_cost"?undefined:0.0001}});
+  return send(200,{id:task.id,model:script.scenario==="wrong_model"?"fake/wrong":task.model,reasoning:{effort:(raw as z.infer<typeof textBody>).reasoning.effort},choices:[{message:{role:"assistant",content:script.scenario==="malformed"?"{broken":task.replyText},finish_reason:"stop"}],usage:{prompt_tokens:60,completion_tokens:20,total_tokens:80,cost:script.scenario==="missing_cost"?undefined:0.0001}});
  }).catch(()=>{if(!res.headersSent)res.writeHead(500);res.end();});});
  await new Promise<void>(resolve=>server.listen(options.port,options.host,resolve));return server;
 }
