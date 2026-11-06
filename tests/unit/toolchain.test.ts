@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -89,24 +89,31 @@ describe("German application shell", () => {
   });
 });
 
-describe("versioned design documents", () => {
-  it("links current drafts to their preserved historical baselines", () => {
-    const copies = [
-      ["docs/architecture.md", "docs/01-design-document-v1.0.0.md", "Version: **1.0.0**"],
-      ["docs/technical-spec.md", "docs/02-technical-specification-v1.0.0.md", "Version: **1.0.0**"],
-      [
-        "docs/implementation-roadmap.md",
-        "docs/03-implementation-roadmap-v1.0.0.md",
-        "Version: **1.0.0**",
-      ],
-    ] as const;
-    for (const [copy, source, marker] of copies) {
-      expect(existsSync(resolve(root, copy)), `missing ${copy}`).toBe(true);
-      expect(read(source)).toContain(marker);
-      expect(read(copy)).toContain("Version: **2.0.0**");
-      expect(read(copy)).toContain("draft");
-      expect(read(copy)).toContain(source.replace("docs/", ""));
-      expect(read(copy)).toContain("writing-system.md");
+describe("canonical design documents", () => {
+  it("has one current design without versioned copies or companion protocols", () => {
+    const canonical = ["architecture.md", "technical-spec.md", "implementation-roadmap.md"];
+    const designFiles = readdirSync(resolve(root, "docs")).filter((name) =>
+      /^(?:\d+-)?(?:design-document|technical-specification|implementation-roadmap|architecture|technical-spec)(?:-v.*)?\.md$/.test(name),
+    );
+    expect(designFiles.sort()).toEqual([...canonical].sort());
+    for (const name of canonical) {
+      const document = read(`docs/${name}`);
+      expect(document).toContain("Version: **2.0.0**");
+      expect(document).not.toMatch(/(?:01-design-document|02-technical-specification|03-implementation-roadmap)-v|writing-system\.md|v1\.[01]\.[01]/);
     }
+    for (const obsolete of [
+      "01-design-document-v1.0.0.md",
+      "02-technical-specification-v1.0.0.md",
+      "03-implementation-roadmap-v1.0.0.md",
+      "writing-system.md",
+    ]) {
+      expect(existsSync(resolve(root, "docs", obsolete)), `obsolete specification ${obsolete}`).toBe(false);
+    }
+    const spec = read("docs/technical-spec.md");
+    expect(spec).toContain("### 8.5 Prompt and model task contract");
+    expect(spec).toContain("### 12.4 Performance and human evaluation");
+    expect(spec).toContain("### 13.4 Staged admission and durable synthetic qualification");
+    expect(spec).toContain("TextRole=orchestrator|writer");
+    for (const name of canonical) expect(read("README.md")).toContain(`docs/${name}`);
   });
 });

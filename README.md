@@ -65,12 +65,15 @@ Node-Worker. Java 21/EPUBCheck werden für den späteren Export benötigt.
 |---|---|
 | Produkt, Architektur, Wirtschaftlichkeit | [Architektur](docs/architecture.md) |
 | Verträge und gezielte Baseline-Referenzen | [Technische Spezifikation](docs/technical-spec.md) |
-| Rollen, Szenenpaket, Prüfharness, Messplan | [Schreibsystem](docs/writing-system.md) |
 | Abhängigkeiten und Abnahme | [Implementierungsplan](docs/implementation-roadmap.md) |
 | Implementiert und ausgeführt | [Runbook](docs/runbook.md), [Release-Bericht](docs/release-report.md) |
 
-Aktive Dokumente: Version 2.0.0, Entwurf. Nummerierte v1.0.0-Dateien bleiben
-historische Referenzen; nur benötigte Abschnitte lesen.
+README ist die Übersicht; Architektur, technische Spezifikation und
+Implementierungsplan sind die einzigen aktuellen Designdokumente (v2.0.0).
+Rollen, Szenenpaket und Prüfharness stehen in der Spezifikation §8.5, der
+Messplan in §12.4. Frühere Fassungen liegen ausschließlich in der Git-Historie.
+Runbook und Release-Bericht dokumentieren den Implementierungsstand und
+überschreiben keine Anforderungen.
 
 Keine öffentliche Registrierung, Abrechnung, Zusammenarbeit, Recherche,
 öffentliche Manuskriptlinks, Drucklayouts oder direkte KDP-Einreichung im Pilot.
