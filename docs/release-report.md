@@ -1,124 +1,87 @@
 # Release Report
 
-Status: **Phase A in progress; local services and schema verified, WP-07 pending. No PR or pilot admission.**
+Status: **Phase A complete through WP-07, including WP-02R and WP-02C.**
+Verified locally on 2026-11-06 against canonical D1/D2/D3 v2.0.0. This is a
+foundation PR, not a pilot release or implementation of later business handlers.
 
-The report records evidence produced by actual commands. Anything not
-executed is listed as missing, not inferred.
+## Synchronized baseline
 
-## Canonical design — 2026-11-06
+The checkout was inspected and `git fetch --prune origin` completed before
+project-document reads or implementation. Remote HEAD resolved to `main` at
+`643db8c23b45c891e811a186ccd65ea7240cc225`. Work is isolated on
+`phase-a-fit-local`; the original checkout and rejected implementation remain
+preserved. The final upstream fetch confirmed that same full SHA. No rejected
+commit was imported, and no historical test result is used as current evidence.
 
-README summarizes the product; `architecture.md`, `technical-spec.md` and
-`implementation-roadmap.md` contain the complete current v2 design. Prior
-numbered files and the separate writing protocol are removed; Git preserves
-history. No compatibility reader or fallback to old specifications is required.
+## Implemented scope
 
-The historical v1 foundation below has been followed by a fresh v2 contract/compiler checkpoint. Current work is isolated on `phase-a-canonical`. WP-03 is incomplete; WP-04–WP-07 have not started. Staged qualification contracts exist, but live execution and admission remain unimplemented/unqualified.
+- WP-01/02 foundations reverified against the current exact dependency lock,
+  strict compiler settings, German shell and closed contracts.
+- WP-02R: separate orchestrator/writer contracts and policies, role-aware
+  metering, source vectors, packets, constraints, coverage, checkpoints and the
+  authoritative SyntheticProbeRow/staged admission contract. Local policies are
+  explicitly fake; the live writer remains unselected and admission closed.
+- WP-02C: deterministic dependency closure, applicable constraints, budgets,
+  stale-source invalidation and check merging, with versioned negative fixtures.
+  Derived STATE output has no authority. Fake token counting is explicitly fake.
+- WP-03: real isolated PostgreSQL 17/Auth/private Storage/mail and independent
+  persistent HTTP text/image and S3-wire backup fakes. Verified tool/font hashes,
+  Java 21, EPUBCheck 5.4.0 and matching Playwright Chromium are recorded. All eight
+  containers run together within the existing 7.9 GiB filesystem.
+- WP-04–06: six real migrations, 39 FORCE-RLS tables, least-privilege roles,
+  deferred ownership/pointer constraints, immutable policy/authorization/result
+  history, integer finance, v2 writing/probe records, bounded administrative and
+  retention procedures, and SELECT-only backup access.
+- WP-07: typed parameterized Store reads and runtime decoding, actor-bound
+  transactions, guard/fence validation, rollback and pooled-context cleanup,
+  root composition, injected clock/redacted telemetry and the actual migration
+  CLI. Every later transaction branch fails closed until its owning use case is
+  implemented; no successful business/doctor/worker placeholder exists.
 
-## Historical implementation evidence (v1 foundation; not current acceptance)
+## Final executed verification
 
-| Area | Evidence | Status |
-|---|---|---|
-| Reproducible install | `npm ci` exit 0, lock committed | pass (local) |
-| Strict typing | `npm run typecheck` exit 0 | pass (local) |
-| Lint | `npm run lint` exit 0 | pass (local) |
-| Unit tests | 44/44 passing (toolchain, contracts, policy) | pass (local) |
-| Closed schemas | Fixed model, privacy filters, cover cap and run scope reject relaxation | pass (local) |
-| Production build | `npm run build` exit 0 | pass (local) |
-| Local Auth/DB/Storage | Not provisioned | missing (WP-03) |
-| Boundary fakes | Not implemented | missing (WP-03) |
-| Fonts, Java 21, EPUBCheck | Not installed or hashed | missing (WP-03/WP-24) |
-| Database schema | No migrations applied | missing (WP-04–WP-07) |
-| Real text/image provider | Not called; fake evidence only | missing (WP-38) |
-| Human quality rubric | Not performed | missing (WP-39) |
-| Hosted backup/restore, SMTP, Kindle Previewer | Not performed | missing (WP-40) |
-| Pilot admission | Not requested, not granted | blocked |
+Node 26.13.0 / npm 11.20.0; original lock retained, no forced dependency resolution
+or disabled strict checks. Commands run from the isolated worktree:
 
-## Known findings
+| Command | Actual result |
+|---|---|
+| `git fetch --prune origin`; `git ls-remote --symref origin HEAD` | Success; full base SHA above unchanged |
+| `npm run env:down` | Success; owned services stopped, volumes retained |
+| `npm ci` | Success; clean installation of 503 packages |
+| `npm run lint` | Exit 0 |
+| `npm run typecheck` | Exit 0; application and tests strict |
+| `npm run build` | Exit 0; TypeScript stage and German shell prerender pass |
+| `npm run env:up` | Success after down; real services and independent fakes healthy |
+| `npm test` | **102 tests passed in 14 files**, including every named Phase A unit/contract suite |
+| `npm run cli -- migrate` | Exit 0; schema version 6 restored after schema contract suites |
+| Production CLI inside Store tests | Empty-schema application: 6 migrations; immediate replay: 0; checksum mismatch: rejected with exit 1 |
+| `npm ls --all` | Exit 0; no invalid peer dependency tree |
+| `npm audit --omit=dev --json` | Exit 0; zero production advisories |
+| `npm audit --json` | Exit 1 as expected: 8 moderate development ESLint-chain advisories, zero high/critical |
+| `git diff --check` | Exit 0 |
 
-- `npm audit`: 16 moderate, 0 high, 0 critical. All findings are in
-  development-only ESLint tooling and are recorded for later review; no
-  production dependency is implicated.
-- Earlier proposed compiler/lint pins were incompatible with the bundled
-  plugins. Current D2 §3 now records the implemented compatible pins,
-  TypeScript 6.0.3 and ESLint 9.39.5; see the runbook for original evidence.
-- Staged qualification, M26/T21, SyntheticProbeRow and operational closure are
-  specified in current D2 §§13.4 and 16.6; implementation and tests remain missing.
-- The fixed model, privacy filters, cover cap, and run-scope bounds are
-  encoded as closed schemas and covered by unit tests. A submitted
-  command body cannot relax them.
-- WP-02 implemented the previous single-model foundation. WP-02R must migrate
-  it to current D2; the new probe/admission design is not implemented yet.
+The tests use actual PostgreSQL roles/connections for forbidden DDL/escalation,
+RLS/catalog checks, non-superuser migration replay and backup SELECT-only access.
+The Store test rolls back actual temporary-table writes and checks pooled
+identity cleanup without inserting legitimate account/project/manuscript state.
+Provider tasks survive fake restart and two web-shell process starts/stops;
+backup bytes survive primary DB reset. Charged timeout persists the provider task;
+missing cost remains unknown. Image submit/poll/JPEG and credential-free asset
+fetch are exercised. Font hashes/licenses and actual ÄÖÜäöüß cmap glyphs are
+checked alongside real Java/EPUBCheck/Chromium execution.
 
-## Release decision
+## Limits and next owner
 
-No release. Resolve the current WP-03 environment blocker, finish its acceptance gates, then continue in dependency order through WP-07. `release-check` does not exist yet; it must
-not be represented as passing.
+Next is WP-08, then invitation/project paths in WP-09/10. Positive two-author
+isolation, populated finance/concurrency/recovery, persisted scene acceptance,
+export validity and full doctor belong to their later packages. The current
+catalog/negative tests and synthetic boundaries do not claim those journeys.
+No application/Auth accounts or manuscripts were seeded. External fakes have no
+application database access and cannot qualify a live provider.
 
-## Fresh v2 implementation checkpoint — 2026-11-06
-
-Base freshly fetched and verified:
-`origin/main` = `643db8c23b45c891e811a186ccd65ea7240cc225`.
-Isolated branch `phase-a-canonical`; no rejected code reused.
-WP-01 clean installation and current toolchain checks rerun. Two-role contract
-migration and pure packet/check/state helpers are now under implementation review.
-Current fresh evidence: lint/typecheck pass, 71 unit tests pass; shell build passes
-with command access enabled. Fixtures test harness logic, not model quality.
-Local policies are fake, writer unselected, live admission closed. No database
-schema, local stack, migration CLI or persistence verification exists yet.
-**Phase A remains incomplete. No PR should be opened at this checkpoint.**
-
-## Current blocking verification — 2026-11-06
-
-**WP-03 incomplete, so WP-04–WP-07 are not eligible.** The 7.9 GiB writable
-filesystem and platform vfs Docker driver could not hold the combined real stack,
-separate Node fakes, tooling and workspace. Official and supported slim stack
-attempts both encountered disk exhaustion. Slim Auth/DB/Storage/mail eventually
-reached healthy status after scoped loopback-health proxy correction and cleanup,
-but adding the fake containers filled disk completely. The owned stack was stopped
-and task-only unused images removed to recover space; data volumes were retained.
-
-Current fresh passing evidence: lint, strict typing, 72 unit tests, shell build,
-and two independent real-HTTP boundary fake tests. The required four-test full
-harness has three unavailable-service failures and one tooling/browser pass.
-No clean combined lifecycle, migrations, privileges/RLS, Store guards or migration
-CLI result exists. Current schema version: **none**. Full Phase A is not complete;
-no push or PR was made. Supply more writable disk, fetch again, and continue at
-WP-03. See the runbook for actual failure/recovery details and remaining gates.
-
-Final upstream refresh confirmed the same full base SHA
-`643db8c23b45c891e811a186ccd65ea7240cc225`. This report supersedes the historical
-v1 and earlier checkpoint status; it does not weaken any canonical requirement.
-
-## WP-03 recovery — 2026-11-06
-
-The prior disk blocker is resolved on the existing 7.9 GiB filesystem. A small,
-hash-locked fake runtime derived from the pinned official Node image and removal
-of one verified duplicate Node installation allow all eight real/fake containers
-to run simultaneously, with about 786 MB free. Original work/data remain preserved.
-`env:up/down/up`, lint, typecheck, 72 unit tests and six named harness/boundary
-checks pass, including process restart and backup survival across primary DB
-replacement. No broad Docker pruning, hosted service or paid call was used.
-Phase A remains in progress: schema/persistence packages WP-04–WP-07 are next.
-
-## WP-04 checkpoint
-
-Migrations 001–002, lint/typecheck and four real core-schema/security checks pass.
-Ownership/role/pointer catalog constraints are present, FORCE RLS is active, browser
-schema access and runtime escalation/DDL/account manufacturing fail. No legitimate
-business state is injected. Schema checkpoint: 2; WP-05–WP-07 remain pending.
-
-## WP-05 checkpoint
-
-Versions 3–4 and eight named core/runtime checks pass with lint and strict typing.
-V2 role/source/check tables, active-run uniqueness, deferred references and integer
-finance storage exist. Production queue/metering handlers remain later owners;
-no fake business rows or financial-race completion claim is used as evidence.
-
-## WP-06 checkpoint
-
-All six schema migrations and the four complete-schema checks pass with lint and
-typing, including a non-superuser replay and an actual SELECT-only backup login.
-39 tables have explicit security policies; no business fixtures are seeded.
-Probe/asset/ownership/immutability/retention primitives exist. The migration CLI,
-Store composition and transaction framework are still pending WP-07; a schema
-checkpoint alone does not establish Phase A completion.
+No paid model call, hosted provisioning, real invitation, deployment or merge
+was performed. Live route/writer qualification, human quality, SMTP/backup/Kindle
+acceptance and pilot admission remain later, explicit gates. Generated keys,
+environments, binaries, dumps and private logs are excluded from Git. The prior
+storage blocker is resolved; historical failed attempts remain in the runbook
+and Git history, not the current acceptance result.

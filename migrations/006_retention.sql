@@ -76,6 +76,8 @@ BEGIN
  IF batch_limit NOT BETWEEN 1 AND 500 OR cutoff>clock_timestamp() OR NOT EXISTS(SELECT FROM app.jobs WHERE id=nullif(current_setting('app.job_id',true),'')::uuid AND kind='maintenance.retention' AND app.worker_authorized(owner_id,project_id)) THEN RAISE EXCEPTION 'retention capability/bounds' USING ERRCODE='42501'; END IF;
  WITH targets AS(SELECT id FROM app.command_records WHERE expires_at<=cutoff ORDER BY expires_at,id LIMIT batch_limit FOR UPDATE SKIP LOCKED) DELETE FROM app.command_records WHERE id IN(SELECT id FROM targets);GET DIAGNOSTICS total=ROW_COUNT;
  WITH targets AS(SELECT id FROM app.rate_limits WHERE window_start<cutoff-interval '24 hours' ORDER BY window_start,id LIMIT batch_limit FOR UPDATE SKIP LOCKED) DELETE FROM app.rate_limits WHERE id IN(SELECT id FROM targets);GET DIAGNOSTICS deleted=ROW_COUNT;
+ total:=total+deleted;
+ WITH targets AS(SELECT id FROM app.invites WHERE expires_at<=cutoff AND encrypted_request IS NOT NULL ORDER BY expires_at,id LIMIT batch_limit FOR UPDATE SKIP LOCKED) UPDATE app.invites SET encrypted_request=NULL,row_version=row_version+1,updated_at=clock_timestamp() WHERE id IN(SELECT id FROM targets);GET DIAGNOSTICS deleted=ROW_COUNT;
  RETURN total+deleted;
 END $$;
 REVOKE ALL ON FUNCTION app.expire_runtime_metadata(timestamptz,integer) FROM PUBLIC,anon,authenticated,app_web;
@@ -248,3 +250,6 @@ BEGIN
  IF (to_jsonb(NEW)-ARRAY['state','reply'])<>(to_jsonb(OLD)-ARRAY['state','reply']) OR OLD.state='complete' OR (OLD.reply IS NOT NULL AND NEW.reply IS DISTINCT FROM OLD.reply) THEN RAISE EXCEPTION 'immutable command identity/reply' USING ERRCODE='23514'; END IF;RETURN NEW;
 END $$;
 CREATE TRIGGER command_record_identity BEFORE UPDATE ON app.command_records FOR EACH ROW EXECUTE FUNCTION app.guard_command_record();
+
+-- Prose tasks always identify the single scene whose packet they consume.
+ALTER TABLE app.model_tasks ADD CONSTRAINT writer_target_required CHECK(role<>'writer' OR target_unit_id IS NOT NULL);

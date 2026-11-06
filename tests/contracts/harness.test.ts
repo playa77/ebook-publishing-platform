@@ -6,6 +6,23 @@ import {execFileSync} from "node:child_process";
 import {Pool} from "pg";
 import {S3Client,PutObjectCommand,GetObjectCommand,ListObjectsV2Command} from "@aws-sdk/client-s3";
 import {chromium} from "@playwright/test";
+// Inspect the pinned TTF Unicode cmap rather than mistaking DOM text for glyph support.
+function glyphFor(font:Buffer,code:number):number{
+ const count=font.readUInt16BE(4);let cmap=0;
+ for(let i=0;i<count;i++){const record=12+i*16;if(font.toString("ascii",record,record+4)==="cmap")cmap=font.readUInt32BE(record+8);}
+ if(!cmap)throw new Error("Font has no cmap");
+ for(let i=0;i<font.readUInt16BE(cmap+2);i++){
+  const record=cmap+4+i*8,platform=font.readUInt16BE(record),encoding=font.readUInt16BE(record+2),offset=cmap+font.readUInt32BE(record+4);
+  if(!(platform===0||(platform===3&&encoding===1))||font.readUInt16BE(offset)!==4)continue;
+  const segments=font.readUInt16BE(offset+6)/2,ends=offset+14,starts=ends+segments*2+2,deltas=starts+segments*2,ranges=deltas+segments*2;
+  for(let segment=0;segment<segments;segment++)if(code>=font.readUInt16BE(starts+segment*2)&&code<=font.readUInt16BE(ends+segment*2)){
+   const delta=font.readInt16BE(deltas+segment*2),range=font.readUInt16BE(ranges+segment*2);
+   if(!range)return (code+delta)&65535;
+   const glyph=font.readUInt16BE(ranges+segment*2+range+(code-font.readUInt16BE(starts+segment*2))*2);return glyph?(glyph+delta)&65535:0;
+  }
+ }
+ return 0;
+}
 const required=(key:string)=>{const value=process.env[key];if(!value)throw new Error(`Run env:up first: ${key}`);return value;};
 it("connects to real local Auth/PostgreSQL/Storage and enforces private signup/storage",async()=>{
  const url=required("DATABASE_URL_MIGRATE");expect(new URL(url).hostname).toBe("127.0.0.1");expect(new URL(url).port).toBe("56322");
@@ -47,7 +64,7 @@ it("stores and lists real independent backup bytes through the S3 wire protocol"
  const result=await client.send(new GetObjectCommand({Bucket:"local-backup",Key:key}));expect(Buffer.from(await result.Body!.transformToByteArray())).toEqual(bytes);expect((await client.send(new ListObjectsV2Command({Bucket:"local-backup",Prefix:"harness/"}))).Contents?.some(i=>i.Key===key)).toBe(true);}finally{client.destroy();}
 },120000);
 it("verifies pinned fonts, actual Java/EPUBCheck and matching Chromium",async()=>{
- const fonts=JSON.parse(readFileSync("config/fonts.json","utf8")) as {fonts:{file:string;sha256:string;licenseFile:string}[]};expect(fonts.fonts).toHaveLength(4);for(const f of fonts.fonts){expect(createHash("sha256").update(readFileSync(f.file)).digest("hex")).toBe(f.sha256);expect(readFileSync(f.licenseFile,"utf8")).toContain("SIL OPEN FONT LICENSE");}
+ const fonts=JSON.parse(readFileSync("config/fonts.json","utf8")) as {fonts:{file:string;sha256:string;licenseFile:string}[]};expect(fonts.fonts).toHaveLength(4);for(const f of fonts.fonts){expect(createHash("sha256").update(readFileSync(f.file)).digest("hex")).toBe(f.sha256);expect(readFileSync(f.licenseFile,"utf8")).toContain("SIL OPEN FONT LICENSE");for(const letter of "ÄÖÜäöüß")expect(glyphFor(readFileSync(f.file),letter.codePointAt(0)!)).toBeGreaterThan(0);}
  expect(execFileSync(`${required("JAVA_HOME")}/bin/java`,["-jar",required("EPUBCHECK_JAR"),"--version"],{encoding:"utf8"})).toContain("5.4.0");
  const browser=await chromium.launch();try{expect(browser.version()).toBe("156.0.8078.4");const page=await browser.newPage();await page.setContent('<html lang="de"><body>ÄÖÜ äöü ß</body></html>');expect(await page.locator("body").innerText()).toBe("ÄÖÜ äöü ß");}finally{await browser.close();}
 });

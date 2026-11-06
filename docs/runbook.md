@@ -2,8 +2,91 @@
 
 This file records implementation evidence under current D3 §2.2. It does not
 define requirements. README and the three canonical design documents own those.
-Earlier WP entries describe their implementation checkpoint; current next work
-is WP-02R/02C, not repeating old bootstrap or following old model contracts.
+The current handoff below supersedes the historical checkpoints that follow.
+Canonical D1/D2/D3 v2.0.0 govern; implementation history is not a specification.
+
+## Current Phase A handoff — 2026-11-06
+
+Phase A through WP-07, including WP-02R/WP-02C, is implemented. Next eligible
+package is WP-08 (real operator identity); no legitimate business state is seeded.
+The final verification record and limits are in `release-report.md`.
+
+Work is isolated in `/workspace/ebook-phase-a`, branch `phase-a-fit-local`,
+from freshly fetched `origin/main` at
+`643db8c23b45c891e811a186ccd65ea7240cc225`. The final fetch confirmed the same SHA.
+The original `work` checkout and its rejected implementation were preserved;
+none of that implementation was cherry-picked. Only this execution’s own
+checkpoints were carried forward when resuming from a fresh default-branch base.
+
+Use Node 26.13.0/npm 11.20.0 and Docker with Compose. On this host the verified
+runtime is available at `work/node-v26.13.0-linux-x64/bin`; prepend it to PATH.
+Run these commands from the repository root:
+
+```sh
+npm ci
+npm run build
+npm run env:up
+npm run cli -- migrate
+npm run lint
+npm run typecheck
+npm test
+npm run cli -- migrate
+```
+
+The final migrate restores the complete schema after the intentionally destructive
+empty-local-schema contract suites. Those suites refuse populated accounts/Auth
+and are only for the isolated local target. Do not run them against hosted data.
+`npm run env:down` stops only the named local stack and retains all volumes;
+`env:up` recreates it with independent provider and backup state. Generated
+`.env.local`, `.env.compose`, keys, binaries, service locks and private logs are
+ignored. Do not commit them or print Supabase status/secret-bearing logs.
+
+The fixed 7.9 GiB environment runs all eight required containers simultaneously.
+The fake runtime mounts the verified Node executable and read-only repository;
+its native libraries are extracted from the pinned official Node image and
+hash-checked against committed evidence. Rootless Docker vfs remains unchanged.
+Only explicit task-owned donor containers/images and one verified duplicate
+Node installation were removed. No broad Docker prune was used.
+
+Supabase uses its supported slim PostgreSQL/Auth/Storage/REST/gateway/mail stack
+on `ebook_phase_a_local`, with loopback host bindings. A scoped Docker-create
+shim clears BusyBox wget’s lowercase proxy lookup for this stack’s health checks;
+upper-case outbound proxy configuration and certificate trust remain intact.
+The private manuscripts bucket is created via the real Storage service.
+
+### WP-07 implementation and verification
+
+Parameterized typed loads decode exact table-tagged row unions, normalize UTC
+instants and preserve monetary integers as decimal strings. Actor-bound
+repeatable-read transactions lock guards and validate persisted worker leases;
+rollback and session-context cleanup precede pooled reuse. Invalid step/load
+shapes, stale guards and every unimplemented transaction kind fail closed.
+Positive business transactions belong to later owning packages.
+
+The root constructs bounded role-specific PostgreSQL pools, injected Clock and
+allowlisted Telemetry, plus the CLI MaintenancePort. PROCESS_ROLE mismatch is
+rejected; pilot requires an explicit role and verified TLS. `cli migrate` is the
+only executable maintenance command: it locks migration execution, checks exact
+source checksums/order, applies six real migrations transactionally and reports
+the applied version. Future CLI/worker paths explicitly fail; there is no passing
+doctor, trace-smoke, queue or business-handler placeholder.
+
+The Store suite starts from an empty schema through the production CLI/root,
+verifies idempotent replay and checksum incompatibility rejection, decodes the
+real immutable policy, checks identity isolation/context cleanup and rolls back
+an actual temporary-table write failure without manufacturing domain rows.
+Telemetry tests reject arbitrary payloads/counts/exceptions and verify separate,
+rotating account/project pseudonyms and an injected UTC clock.
+
+Final prerequisite corrections also validate ModelTask role/request/reply/packet
+consistency, real calendar instants, writer scene targets and bounded expiry of
+invitation ciphertext. Boundary tests exercise charged-timeout durability,
+unknown cost, BFL submit/poll/returned JPEG URL and credential-free asset download.
+Font verification checks actual Unicode cmap glyphs for ÄÖÜäöüß as well as hashes,
+licenses and actual Chromium/Java/EPUBCheck executables.
+
+## Historical package checkpoints
+
 
 ## WP-01 — Repository and exact dependency lock
 
@@ -234,7 +317,7 @@ before the final fixture-only additions. Schema version: **none**, no services o
 application rows yet. Next: finish current compiler review, then WP-03. No PR or
 Phase A completion is claimed by this checkpoint.
 
-## Current handoff — WP-03 incomplete, storage blocker (2026-11-06)
+## Historical WP-03 storage blocker — resolved below (2026-11-06)
 
 **Do not open a PR or advance to WP-04 on this checkpoint.** Canonical design
 files were not amended. Source/config changes remain a local implementation

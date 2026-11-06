@@ -755,7 +755,7 @@ export type HttpResponseBody =
 
 const pageOf = <T extends z.ZodTypeAny>(item: T) =>
   z.strictObject({
-    items: z.array(item),
+    items: z.array(item).max(100),
     nextCursor: z.string().max(500).optional(),
   });
 
@@ -807,3 +807,9 @@ export function parseQuery(input: unknown, requestId: string): Outcome<Query> {
   if (!parsed.success) return err(fromZodError(parsed.error, requestId));
   return ok(parsed.data);
 }
+
+
+export const replySchema=z.union([z.strictObject({data:responseDataSchema,requestId:idSchema}),z.strictObject({error:faultSchema,requestId:idSchema})]);
+export const commandRecordSchema=z.strictObject({id:idSchema,actorKey:z.string().min(1).max(200),key:z.string().min(16).max(128),operation:z.string().min(1).max(100),bodyHash:hashSchema,state:z.enum(["pending","complete"]),reply:replySchema.optional(),createdAt:timeSchema,expiresAt:timeSchema}).refine(r=>(r.state==="complete")===(r.reply!==undefined));
+export const txKindSchema=z.enum(["account_invite","account_activate","policy_change","project_create","project_update","project_archive","asset_register","asset_ready","import_accept","plan_propose","plan_approve","draft_save","draft_checkpoint","restore","run_start","run_control","proposal_accept","proposal_reject","canon_stage","canon_publish","conflict_decide","job_claim","job_heartbeat","job_finish","job_retry","cost_reserve","cost_settle","cost_review","cover_batch","cover_publish","cover_select","export_request","export_publish","data_export","deletion_request","deletion_mark","deletion_purge","schedule_tick","backup_record","retention_tick","rate_limit","probe_record"]);
+export const commitRequestSchema=z.strictObject({kind:txKindSchema,guard:guardSchema,command:z.union([publicCommandSchema,internalCommandSchema]).optional(),step:stepMutationSchema.optional()}).superRefine((r,c)=>{if((r.command===undefined)===(r.step===undefined))c.addIssue({code:"custom",message:"Genau ein Befehl oder Schritt ist erforderlich."});if(r.step && r.step.kind!==r.kind)c.addIssue({code:"custom",message:"Transaktion und Schritt stimmen nicht überein."});});

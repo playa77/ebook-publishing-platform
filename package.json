@@ -18,7 +18,8 @@
     "test:unit": "vitest run tests/unit",
     "env:up": "node scripts/bootstrap-local.mjs up",
     "env:down": "node scripts/bootstrap-local.mjs down",
-    "test:contracts": "vitest run tests/contracts"
+    "test:contracts": "vitest run tests/contracts",
+    "cli": "node --env-file-if-exists=.env.local --import tsx scripts/cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1161.0",

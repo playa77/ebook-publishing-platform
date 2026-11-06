@@ -1,0 +1,97 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { randomUUID } from "node:crypto";
+import { Pool } from "pg";
+import pino from "pino";
+import { appConfigSchema, policyHash, validateRoleSecrets, type AppConfig } from "../config/schema";
+import { makeFault, err, ok, toFault, type Outcome } from "../contracts/errors";
+import { cliCommandSchema, type CliResult } from "../contracts/operations";
+import type { App, ModeRole, Store, MaintenancePort } from "../contracts/ports";
+import { createClock } from "../adapters/clock";
+import { createTelemetry } from "../adapters/telemetry";
+import { createStore } from "../persistence/store";
+import { migrate } from "../persistence/transactions";
+const root = resolve(import.meta.dirname, "../..");
+function json(file: string): unknown { return JSON.parse(readFileSync(resolve(root, file), "utf8")); }
+/** Only this module constructs process clients. No caller receives a vendor SDK. */
+export function readConfig(role: ModeRole): AppConfig {
+    const env = process.env, environment = env.APP_ENV, providerMode = env.PROVIDER_MODE;
+    if ((env.PROCESS_ROLE && env.PROCESS_ROLE !== role) || (environment === "pilot" && !env.PROCESS_ROLE))
+        throw makeFault("INVALID_INPUT", randomUUID(), { field: "runtime.processRole" });
+    if (!environment || !providerMode)
+        throw makeFault("INVALID_INPUT", randomUUID(), { field: "runtime.environment" });
+    const active = role === "worker" ? env.DATABASE_URL_WORKER : env.DATABASE_URL_WEB;
+    const backupKeys = role !== "web" && env.BACKUP_KEYS_CONFIG ? JSON.parse(readFileSync(env.BACKUP_KEYS_CONFIG, "utf8")) : {};
+    return appConfigSchema.parse({
+        database: { webUrl: role === "worker" ? active : env.DATABASE_URL_WEB, workerUrl: role === "cli" || role === "worker" ? env.DATABASE_URL_WORKER : active, ...(role === "cli" ? { migrateUrl: env.DATABASE_URL_MIGRATE, backupUrl: env.DATABASE_URL_BACKUP } : {}), webPoolMax: 5, workerPoolMax: 5, cliPoolMax: 2, tls: environment === "pilot" },
+        auth: { url: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY, inviteHmacKey: env.INVITE_HMAC_KEY, transientEncryptionKey: env.TRANSIENT_ENCRYPTION_KEY },
+        objects: { url: env.SUPABASE_URL, key: env.SUPABASE_ADMIN_KEY, publicOrigin: env.SUPABASE_PUBLIC_URL ?? env.SUPABASE_URL },
+        backup: { bucket: environment === "pilot" ? env.BACKUP_BUCKET : "local-backup", region: "eu-central-1", keyId: env.BACKUP_KEY_ID ?? "role-unavailable", keys: backupKeys },
+        runtime: { environment, role, appUrl: env.APP_URL, providerMode, logLevel: env.LOG_LEVEL ?? "info", logPseudonymKey: env.LOG_PSEUDONYM_KEY },
+        providerPolicy: json("config/providers.json"), pilotPolicy: json("config/pilot-policy.json"), fonts: json("config/fonts.json"), releaseEvidence: json("config/release-evidence.json"), secrets: {},
+    });
+}
+export interface FoundationApp extends App {
+    store: Store;
+    maintenance: MaintenancePort;
+    close(): Promise<void>;
+}
+export function buildApp(role: ModeRole, input: unknown, writeLog: (line: string) => void = line => { process.stdout.write(line); }): FoundationApp {
+    const parsed = appConfigSchema.safeParse(input);
+    if (!parsed.success)
+        throw makeFault("INVALID_INPUT", randomUUID(), { field: "config" });
+    const config = parsed.data;
+    if (config.runtime.role !== role)
+        throw makeFault("INVALID_INPUT", randomUUID(), { field: "runtime.role" });
+    if (config.runtime.logPseudonymKey === config.auth.inviteHmacKey)
+        throw makeFault("INVALID_INPUT", randomUUID(), { field: "runtime.logPseudonymKey" });
+    if (role === "web") {
+        const secrets = validateRoleSecrets({ role, providerMode: config.runtime.providerMode, secrets: config.secrets });
+        if (!secrets.ok)
+            throw secrets.error;
+    }
+    const clock = createClock(), releaseHash = config.releaseEvidence.mode === "live" ? config.releaseEvidence.releaseId : policyHash({ providers: config.providerPolicy, pilot: config.pilotPolicy, fonts: config.fonts });
+    const logger = pino({ level: config.runtime.logLevel, base: undefined, timestamp: false }, { write: writeLog });
+    const telemetry = createTelemetry(event => logger[event.level](event));
+    function pool(raw: string, max: number, maintenance = false): Pool {
+        const url = new URL(raw);
+        for (const name of ["sslmode", "ssl", "sslcert", "sslkey", "sslrootcert"])
+            url.searchParams.delete(name);
+        return new Pool({ connectionString: url.toString(), max, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000, query_timeout: maintenance ? 120000 : 10000, statement_timeout: maintenance ? 120000 : 10000, ssl: config.database.tls ? { rejectUnauthorized: true } : false });
+    }
+    const data = pool(role === "worker" ? config.database.workerUrl : config.database.webUrl, role === "cli" ? 2 : 5);
+    const store = createStore(data, { role, clock, telemetry, releaseHash });
+    const maintenancePool = role === "cli" && config.database.migrateUrl ? pool(config.database.migrateUrl, 2, true) : undefined;
+    const maintenance: MaintenancePort = { async run(command) {
+            const requestId = randomUUID();
+            if (role !== "cli" || !maintenancePool)
+                return err(makeFault("OPERATOR_REQUIRED", requestId));
+            if (command.kind !== "migrate")
+                return ok({ passed: false, report: { command: command.kind, passed: false, summaryDe: "Dieser Wartungsbefehl ist in dieser Implementierungsphase noch nicht verfügbar.", resourceIds: [], evidencePaths: [] } });
+            try {
+                const target = new URL(config.database.migrateUrl!);
+                const local = config.runtime.environment !== "pilot" && config.runtime.providerMode === "fake" && target.hostname === "127.0.0.1" && target.port === "56322" && target.username === "supabase_admin";
+                const result = await migrate(maintenancePool, requestId, local ? { webUrl: process.env.DATABASE_URL_WEB ?? config.database.webUrl, workerUrl: process.env.DATABASE_URL_WORKER ?? config.database.workerUrl, backupUrl: config.database.backupUrl } : undefined);
+                return ok({ passed: true, report: { command: "migrate", passed: true, summaryDe: `Datenbankschema Version ${result.version}; ${result.applied.length} Migrationen angewendet.`, resourceIds: [], evidencePaths: [] } });
+            }
+            catch (error) {
+                const fault = toFault(error, requestId);
+                return err(fault.code === "INTERNAL_ERROR" ? makeFault("DATABASE_UNAVAILABLE", requestId) : fault);
+            }
+        } };
+    return {
+        store, maintenance,
+        cli: { async execute(input, ctx): Promise<Outcome<CliResult>> {
+                const command = cliCommandSchema.safeParse(input);
+                if (!command.success)
+                    return err(makeFault("INVALID_INPUT", ctx.requestId));
+                if (command.data.command !== "migrate")
+                    return ok({ command: command.data.command, passed: false, summaryDe: "Dieser Befehl ist noch nicht implementiert; es wurde keine Aktion ausgeführt.", resourceIds: [], evidencePaths: [] });
+                const result = await maintenance.run({ kind: "migrate" });
+                return result.ok ? ok(result.value.report) : err({ ...result.error, requestId: ctx.requestId });
+            } },
+        http: { async dispatch() { const requestId = randomUUID(); return { status: 404, headers: { "Cache-Control": "no-store, private" }, cookies: [], body: { error: makeFault("NOT_FOUND", requestId), requestId } }; } },
+        worker: { async tick() { return err(makeFault("INVALID_INPUT", randomUUID(), { field: "worker.not_implemented" })); } },
+        async close() { await Promise.all([data.end(), ...(maintenancePool ? [maintenancePool.end()] : [])]); },
+    };
+}

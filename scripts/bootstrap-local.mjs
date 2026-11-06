@@ -24,7 +24,7 @@ function prepareFakeRuntime(){
  if(existsSync(lockFile)){
   const lock=JSON.parse(readFileSync(lockFile,"utf8"));
   let actual;try{actual=execFileSync("docker",["image","inspect",lock.image,"--format","{{.Id}}"],{encoding:"utf8",env}).trim();}catch{}
-  if(actual===lock.imageId && lock.sourceImage===sourceImage && lock.nodeHash===nodeHash && treeHash(rootfs)===lock.libraryHash)return {...lock,nodeBinary};
+  if(actual===lock.imageId && lock.sourceImage===sourceImage && lock.nodeHash===nodeHash && nodeHash===release.fakeRuntime.nodeBinaryHash && lock.libraryHash===release.fakeRuntime.libraryTreeHash && treeHash(rootfs)===lock.libraryHash)return {...lock,nodeBinary};
  }
  const ownedFile=resolve("work/runtime-owned-images.json");
  const owned=existsSync(ownedFile)?JSON.parse(readFileSync(ownedFile,"utf8")):[];
@@ -109,7 +109,7 @@ if(mode==="down"){
  writeFileSync("work/backup-keys.json",JSON.stringify({"local-v1":secrets.vault}),{mode:0o600});
  const serialize=values=>Object.entries(values).map(([k,v])=>{if(typeof v!=="string")throw new Error(`Missing discovered local field ${k}`);return `${k}=${JSON.stringify(v)}`;}).join("\n")+"\n";
  writeFileSync(".env.local",serialize(common),{mode:0o600});
- const internal={...common,SUPABASE_URL:"http://supabase_kong_author-platform:8000"};for(const k of ["DATABASE_URL_WEB","DATABASE_URL_WORKER","DATABASE_URL_MIGRATE","DATABASE_URL_BACKUP"]){const u=new URL(internal[k]);u.hostname=dbName;u.port="5432";internal[k]=u.toString();}
+ const internal={...common,SUPABASE_URL:"http://supabase_kong_author-platform:8000",FAKE_TEXT_URL:"http://provider-fake:4400/api/v1",FAKE_BACKUP_URL:"http://backup-fake:4401",LOCAL_MAIL_URL:"http://supabase_inbucket_author-platform:8025"};for(const k of ["DATABASE_URL_WEB","DATABASE_URL_WORKER","DATABASE_URL_MIGRATE","DATABASE_URL_BACKUP"]){const u=new URL(internal[k]);u.hostname=dbName;u.port="5432";internal[k]=u.toString();}
  writeFileSync(".env.compose",serialize(internal),{mode:0o600});
  run("docker",[...compose,"up","-d","--wait","--wait-timeout","90"]);
  run("docker",["exec",dbName,"pg_dump","--version"]);

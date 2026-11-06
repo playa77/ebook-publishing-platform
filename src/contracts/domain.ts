@@ -18,7 +18,7 @@ export const timeSchema = z
   .regex(
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/,
     "Zeitangaben müssen UTC-Instants im RFC3339-Format sein.",
-  );
+  ).refine(value=>{const at=new Date(value);return Number.isFinite(at.getTime())&&at.toISOString().slice(0,19)===value.slice(0,19);},"Ungültiger Kalendertag oder Zeitpunkt.");
 export type Time = z.infer<typeof timeSchema>;
 
 export const dateKeySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -1127,6 +1127,10 @@ export const modelTaskRowSchema = z.strictObject({
   baseGuard: guardSchema,
   attemptId: idSchema.nullable(),
   status: z.enum(["queued", "ready", "invalid", "stale", "failed"]),
+}).superRefine((task,ctx)=>{
+  if(task.role!==task.request.role||task.stage!==task.request.stage||task.policyHash!==task.request.policyHash||
+    (task.role==="writer"&&(!task.targetUnitId||!task.packetId||task.packetHash!==task.request.packetHash))||
+    (task.reply!==null&&task.reply.kind!==task.request.responseKind))ctx.addIssue({code:"custom",message:"Aufgabe, Rolle und Ergebnis stimmen nicht überein."});
 });
 export type ModelTaskRow = z.infer<typeof modelTaskRowSchema>;
 
