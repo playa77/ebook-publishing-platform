@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {syntheticProbeRowSchema,scenePacketRowSchema,constraintRowSchema,checkRowSchema,checkpointRowSchema} from "./domain";
 
 import {
   artDirectionSchema,
@@ -382,6 +383,8 @@ export type Command = z.infer<typeof publicCommandSchema>;
 // ---------------------------------------------------------------------------
 
 export const internalCommandSchema = z.discriminatedUnion("op", [
+  z.strictObject({op:z.literal("operations.probeStart"),input:z.strictObject({capUsd:usdSchema,deadline:timeSchema,policyHashes:z.array(hashSchema),fixtureHash:hashSchema})}),
+  z.strictObject({op:z.literal("operations.probeAdvance"),input:z.strictObject({probeId:idSchema,expectedVersion:z.number().int().nonnegative()})}),
   z.strictObject({
     op: z.literal("identity.bootstrapOperator"),
     input: z.strictObject({ email: z.string().email().max(320) }),
@@ -528,7 +531,7 @@ export type PublicResponseData =
   | Download
   | Empty;
 
-export type CommandResult = PublicResponseData | CanonValidation | AssetRow | Canon;
+export type CommandResult = PublicResponseData | CanonValidation | AssetRow | Canon | import("./domain").SyntheticProbeRow;
 export type QueryResult = PublicResponseData;
 export type ResponseData = PublicResponseData;
 
@@ -553,6 +556,7 @@ export const counterChangeSchema = z.strictObject({
 export type CounterChange = z.infer<typeof counterChangeSchema>;
 
 export const stepMutationSchema = z.discriminatedUnion("kind", [
+  z.strictObject({kind:z.literal("probe_record"),probe:syntheticProbeRowSchema,attempts:z.array(attemptRowSchema),reservations:z.array(reservationRowSchema),usage:z.array(usageRowSchema)}),
   z.strictObject({
     kind: z.enum(["job_claim", "job_heartbeat", "job_finish", "job_retry"]),
     job: jobRowSchema,
@@ -568,16 +572,18 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
     kind: z.literal("import_accept"),
     import: importRowSchema,
     parsed: parsedInputSchema,
-    asset: z.strictObject({ id: idSchema }).optional(),
+    asset: assetRowSchema.optional(),
   }),
   z.strictObject({
     kind: z.literal("plan_propose"),
+    constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),
     revision: planRowSchema,
     task: modelTaskRowSchema.optional(),
     issues: z.array(issueSchema),
   }),
   z.strictObject({
     kind: z.literal("plan_approve"),
+    constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),
     revisionId: idSchema,
     units: z.array(unitRowSchema),
     canon: canonRowSchema.optional(),
@@ -585,6 +591,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("proposal_accept"),
+    checkIds:z.array(idSchema),checkpoint:checkpointRowSchema,
     proposal: proposalRowSchema,
     revisions: z.array(revisionRowSchema),
     canon: canonRowSchema,
@@ -594,6 +601,7 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("run_control"),
+    packets:z.array(scenePacketRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     run: runRowSchema,
     proposals: z.array(proposalRowSchema),
     modelTasks: z.array(modelTaskRowSchema),
@@ -604,10 +612,11 @@ export const stepMutationSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("canon_stage"),
+    packets:z.array(scenePacketRowSchema),constraints:z.array(constraintRowSchema),checks:z.array(checkRowSchema),checkpoints:z.array(checkpointRowSchema),
     revisions: z.array(revisionRowSchema),
     extractions: z.array(extractionRowSchema),
-    modelTasks: z.array(modelTaskRowSchema).optional(),
-    stagedCanon: z.strictObject({ id: idSchema }).optional(),
+    modelTasks: z.array(modelTaskRowSchema),
+    stagedCanon: canonRowSchema.optional(),
     conflicts: z.array(conflictRowSchema),
     cursor: z.number().int().nonnegative(),
     nextJobs: z.array(jobRowSchema),
@@ -688,7 +697,8 @@ export const cliCommandSchema = z.discriminatedUnion("command", [
   z.strictObject({
     command: z.literal("restore-check"),
     backupId: idSchema,
-    target: z.literal("local-isolated"),
+    target: z.enum(["local-isolated","hosted-isolated"]),
+    configRef:z.string().min(1).optional(),
   }),
   z.strictObject({
     command: z.literal("economics"),
@@ -698,6 +708,7 @@ export const cliCommandSchema = z.discriminatedUnion("command", [
     command: z.literal("smoke-live"),
     maxUsd: usdSchema,
     syntheticOnly: z.literal(true),
+    resume:idSchema.optional(),
   }),
   z.strictObject({ command: z.literal("release-check") }),
 ]);
@@ -744,7 +755,7 @@ export type HttpResponseBody =
 
 const pageOf = <T extends z.ZodTypeAny>(item: T) =>
   z.strictObject({
-    items: z.array(item),
+    items: z.array(item).max(100),
     nextCursor: z.string().max(500).optional(),
   });
 
@@ -796,3 +807,9 @@ export function parseQuery(input: unknown, requestId: string): Outcome<Query> {
   if (!parsed.success) return err(fromZodError(parsed.error, requestId));
   return ok(parsed.data);
 }
+
+
+export const replySchema=z.union([z.strictObject({data:responseDataSchema,requestId:idSchema}),z.strictObject({error:faultSchema,requestId:idSchema})]);
+export const commandRecordSchema=z.strictObject({id:idSchema,actorKey:z.string().min(1).max(200),key:z.string().min(16).max(128),operation:z.string().min(1).max(100),bodyHash:hashSchema,state:z.enum(["pending","complete"]),reply:replySchema.optional(),createdAt:timeSchema,expiresAt:timeSchema}).refine(r=>(r.state==="complete")===(r.reply!==undefined));
+export const txKindSchema=z.enum(["account_invite","account_activate","policy_change","project_create","project_update","project_archive","asset_register","asset_ready","import_accept","plan_propose","plan_approve","draft_save","draft_checkpoint","restore","run_start","run_control","proposal_accept","proposal_reject","canon_stage","canon_publish","conflict_decide","job_claim","job_heartbeat","job_finish","job_retry","cost_reserve","cost_settle","cost_review","cover_batch","cover_publish","cover_select","export_request","export_publish","data_export","deletion_request","deletion_mark","deletion_purge","schedule_tick","backup_record","retention_tick","rate_limit","probe_record"]);
+export const commitRequestSchema=z.strictObject({kind:txKindSchema,guard:guardSchema,command:z.union([publicCommandSchema,internalCommandSchema]).optional(),step:stepMutationSchema.optional()}).superRefine((r,c)=>{if((r.command===undefined)===(r.step===undefined))c.addIssue({code:"custom",message:"Genau ein Befehl oder Schritt ist erforderlich."});if(r.step && r.step.kind!==r.kind)c.addIssue({code:"custom",message:"Transaktion und Schritt stimmen nicht überein."});});

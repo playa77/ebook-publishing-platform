@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import {
+  modelRequestSchema,
   fontManifestSchema,
   hashSchema,
   idSchema,
@@ -84,18 +85,56 @@ export const defaultPilotPolicy: PilotPolicy = Object.freeze(
 export const defaultProviderPolicy: ProviderPolicy = Object.freeze(
   providerPolicySchema.parse({
     text: {
-      baseUrl: "https://eu.openrouter.ai/api/v1",
-      model: "mistralai/mistral-large-4-0",
-      providerOnly: ["mistral"],
-      providerFallbacks: false,
-      dataCollection: "deny",
-      zdr: true,
-      maxInputUsdPerMillion: "770000",
-      maxOutputUsdPerMillion: "2310000",
-      gatewayFeeBps: 800,
-      contextTokenLimit: 131_072,
-      approvedEvidenceId: "pending-local-approval",
-    } as const,
+  "orchestrator": {
+    "role": "orchestrator",
+    "alias": "deepseek-4.1-flash",
+    "baseUrl": "http://127.0.0.1:4400/api/v1",
+    "model": "fake/orchestrator",
+    "providerOnly": [
+      "fake"
+    ],
+    "providerFallbacks": false,
+    "dataCollection": "deny",
+    "zdr": true,
+    "regionEvidenceId": "fake-local-only",
+    "tokenizerVersion": "fake-utf8-v1",
+    "contextTokenLimit": 131072,
+    "maxCompletionTokens": 16384,
+    "supportedReasoning": [
+      {
+        "mode": "off",
+        "parameter": "effort",
+        "value": "off",
+        "billableWithinCompletionCap": true
+      },
+      {
+        "mode": "low",
+        "parameter": "effort",
+        "value": "low",
+        "billableWithinCompletionCap": true
+      },
+      {
+        "mode": "high",
+        "parameter": "effort",
+        "value": "high",
+        "billableWithinCompletionCap": true
+      },
+      {
+        "mode": "max",
+        "parameter": "effort",
+        "value": "max",
+        "billableWithinCompletionCap": true
+      }
+    ],
+    "maxInputUsdPerMillion": "1000000",
+    "maxOutputUsdPerMillion": "2000000",
+    "maxReasoningUsdPerMillion": "2000000",
+    "gatewayFeeBps": 800,
+    "priceVersion": "fake-v1",
+    "approvedEvidenceId": "fake-not-qualified"
+  },
+  "writer": null
+},
     image: {
       baseUrl: "https://api.eu.bfl.ai",
       path: "/v1/flux-2-pro",
@@ -112,12 +151,61 @@ export const defaultProviderPolicy: ProviderPolicy = Object.freeze(
   }),
 );
 
+export const fakeWriterPolicy: TextPolicy = textPolicySchema.parse({
+  "role": "writer",
+  "alias": "fake-prose-writer",
+  "baseUrl": "http://127.0.0.1:4400/api/v1",
+  "model": "fake/writer",
+  "providerOnly": [
+    "fake"
+  ],
+  "providerFallbacks": false,
+  "dataCollection": "deny",
+  "zdr": true,
+  "regionEvidenceId": "fake-local-only",
+  "tokenizerVersion": "fake-utf8-v1",
+  "contextTokenLimit": 131072,
+  "maxCompletionTokens": 16384,
+  "supportedReasoning": [
+    {
+      "mode": "off",
+      "parameter": "effort",
+      "value": "off",
+      "billableWithinCompletionCap": true
+    },
+    {
+      "mode": "low",
+      "parameter": "effort",
+      "value": "low",
+      "billableWithinCompletionCap": true
+    },
+    {
+      "mode": "high",
+      "parameter": "effort",
+      "value": "high",
+      "billableWithinCompletionCap": true
+    },
+    {
+      "mode": "max",
+      "parameter": "effort",
+      "value": "max",
+      "billableWithinCompletionCap": true
+    }
+  ],
+  "maxInputUsdPerMillion": "1000000",
+  "maxOutputUsdPerMillion": "2000000",
+  "maxReasoningUsdPerMillion": "2000000",
+  "gatewayFeeBps": 800,
+  "priceVersion": "fake-v1",
+  "approvedEvidenceId": "fake-not-qualified"
+});
+
 export const defaultFontManifest: FontManifest = Object.freeze(
   fontManifestSchema.parse({ fonts: [] }),
 );
 
 // ---------------------------------------------------------------------------
-// Release evidence and admission (§13.3; staged admission blocked on D2 v1.0.1)
+// Release evidence and staged admission (§§13.3–13.4)
 // ---------------------------------------------------------------------------
 
 export const evidenceCheckSchema = z.strictObject({
@@ -129,6 +217,7 @@ export type EvidenceCheck = z.infer<typeof evidenceCheckSchema>;
 
 export const providerApprovalSchema = z.strictObject({
   id: idSchema,
+  role:z.enum(["orchestrator","writer"]).optional(),
   policyHash: hashSchema,
   operatorId: idSchema,
   approvedAt: timeSchema,
@@ -157,6 +246,11 @@ export const fakeReleaseEvidenceSchema = z.strictObject({
   mode: z.literal("fake"),
   checkedAt: timeSchema,
   note: z.string().min(1).max(500),
+  fakeRuntime:z.strictObject({sourceImage:z.string().min(1),libraryTreeHash:hashSchema,nodeBinaryHash:hashSchema}).optional(),
+  supabaseCli:z.strictObject({version:z.string().min(1),sha256:hashSchema}).optional(),
+  imageDigests:z.record(z.string(),hashSchema).optional(),
+  validatorVersion:z.literal("5.4.0").optional(),
+  toolArtifacts:z.array(z.strictObject({name:z.string().min(1),version:z.string().min(1),url:urlSchema,sha256:hashSchema,installedTreeHash:hashSchema.optional(),hashTarget:z.enum(["distribution","installed-executable"]).optional()})).optional(),
 });
 
 export const liveReleaseEvidenceSchema = z.strictObject({
@@ -173,6 +267,7 @@ export const liveReleaseEvidenceSchema = z.strictObject({
   databaseVersion: z.string().min(1).max(200),
   fontManifestHash: hashSchema,
   validatorVersion: z.literal("5.4.0"),
+  admission:z.strictObject({state:z.enum(["preflight","qualification","pilot"]),operatorId:idSchema,approvedAt:timeSchema,policyHashes:z.array(hashSchema),evidenceIds:z.array(z.string().min(1))}),
   providerApprovals: z.array(providerApprovalSchema),
   tests: z.array(
     z.strictObject({
@@ -197,6 +292,10 @@ export const releaseEvidenceSchema = z.discriminatedUnion("mode", [
 export type ReleaseEvidence = z.infer<typeof releaseEvidenceSchema>;
 
 export type AdmissionBlocker =
+  | "admission_not_pilot"
+  | "writer_unselected"
+  | "role_policy_fake"
+  | "policy_hash_mismatch"
   | "release_evidence_fake"
   | "provider_not_live"
   | "app_url_not_https"
@@ -257,6 +356,7 @@ export const appConfigSchema = z
       publicOrigin: urlSchema.optional(),
     }),
     backup: z.strictObject({
+      keyId:z.string().min(1),keys:z.record(z.string().min(1),z.string().min(32)),
       bucket: z.string().min(1).max(200),
       region: z.literal("eu-central-1"),
       accessKeyId: z.string().min(1).max(500).optional(),
@@ -274,6 +374,7 @@ export const appConfigSchema = z
     pilotPolicy: pilotPolicySchema,
     fonts: fontManifestSchema,
     releaseEvidence: releaseEvidenceSchema,
+    reportingFx:z.strictObject({date:timeSchema,usdPerEur:z.string().regex(/^[0-9]+(\.[0-9]+)?$/),source:z.string().min(1)}).optional(),
     secrets: z.strictObject({
       openrouterKey: z.string().min(1).max(500).optional(),
       bflKey: z.string().min(1).max(500).optional(),
@@ -422,16 +523,21 @@ export function evaluatePilotAdmission(config: AppConfig): AdmissionResult {
     return { ready: false, blockers: [...blockers] };
   }
 
-  const textApproval = evidence.providerApprovals.find(
-    (approval) => approval.policyHash === policyHash(config.providerPolicy.text),
-  );
-  const imageApproval = evidence.providerApprovals.find(
-    (approval) => approval.policyHash === policyHash(config.providerPolicy.image),
-  );
-  if (!textApproval || !imageApproval) blockers.add("provider_approval_missing");
-  if (textApproval && textApproval.contextTokenLimit === undefined) {
-    blockers.add("context_token_limit_missing");
+  if(evidence.admission.state!=="pilot") blockers.add("admission_not_pilot");
+  const policies=[config.providerPolicy.text.orchestrator,config.providerPolicy.text.writer];
+  if(!policies[1]) blockers.add("writer_unselected");
+  for(const p of policies){
+    if(!p) continue;
+    if(p.model.startsWith("fake/") || p.providerOnly.includes("fake") || !p.baseUrl.startsWith("https://")) blockers.add("role_policy_fake");
+    const hash=policyHash(p);
+    if(!evidence.admission.policyHashes.includes(hash)) blockers.add("policy_hash_mismatch");
+    const approval=evidence.providerApprovals.find(a=>a.role===p.role && a.policyHash===hash && a.id===p.approvedEvidenceId);
+    if(!approval) blockers.add("provider_approval_missing");
+    if(!approval?.contextTokenLimit || approval.contextTokenLimit!==p.contextTokenLimit) blockers.add("context_token_limit_missing");
   }
+  const imageHash=policyHash(config.providerPolicy.image);
+  if(!evidence.admission.policyHashes.includes(imageHash)) blockers.add("policy_hash_mismatch");
+  if(!evidence.providerApprovals.some(a=>a.role===undefined && a.policyHash===imageHash)) blockers.add("provider_approval_missing");
   if (evidence.fontManifestHash !== policyHash(config.fonts)) blockers.add("font_manifest_mismatch");
   if (!isFontManifestComplete(config.fonts)) blockers.add("fonts_incomplete");
   if (evidence.tests.length === 0 || evidence.tests.some((test) => !test.passed)) {
@@ -472,7 +578,7 @@ function ceilDiv(numerator: bigint, denominator: bigint): bigint {
 }
 
 export function inputTokenUpperBound(inputBytes: number, overhead: number): number {
-  if (!Number.isSafeInteger(inputBytes) || inputBytes < 0) {
+  if (![inputBytes,overhead].every(v=>Number.isSafeInteger(v) && v>=0)) {
     throw new RangeError("inputBytes must be a nonnegative safe integer");
   }
   return inputBytes + overhead;
@@ -482,8 +588,9 @@ export function textReserveUsd(
   inputTokens: number,
   outputTokens: number,
   policy: TextPolicy,
+  reasoningTokens = 0,
 ): string {
-  if (inputTokens < 0 || outputTokens < 0) {
+  if (![inputTokens,outputTokens,reasoningTokens].every(v=>Number.isSafeInteger(v) && v>=0)) {
     throw new RangeError("token counts must be nonnegative");
   }
   const input = ceilDiv(BigInt(inputTokens) * BigInt(policy.maxInputUsdPerMillion), MICRO_USD_PER_USD);
@@ -491,7 +598,8 @@ export function textReserveUsd(
     BigInt(outputTokens) * BigInt(policy.maxOutputUsdPerMillion),
     MICRO_USD_PER_USD,
   );
-  const subtotal = input + output;
+  const reasoning=ceilDiv(BigInt(reasoningTokens)*BigInt(policy.maxReasoningUsdPerMillion),MICRO_USD_PER_USD);
+  const subtotal = input + output + reasoning;
   const fee = ceilDiv(subtotal * BigInt(policy.gatewayFeeBps), 10_000n);
   return (subtotal + fee).toString();
 }
@@ -527,3 +635,30 @@ export const configSchemas = {
 } as const;
 
 export type { Fault };
+
+/** Validate the immutable captured route before a gateway may reserve or dispatch. */
+export function validateModelPolicy(request: import("../contracts/domain").ModelRequest, policies: ProviderPolicy["text"], mode: "fake"|"live"): Outcome<TextPolicy> {
+  const fail=(code:"PROVIDER_UNREADY"|"PROVIDER_POLICY"|"CONTEXT_LIMIT")=>err<never>({code,messageDe:code==="CONTEXT_LIMIT"?"Der vollständige Kontext überschreitet das freigegebene Limit.":"Die angeforderte Textrolle ist nicht freigegeben.",retry:"operator",requestId:request.requestId});
+  if(!modelRequestSchema.safeParse(request).success) return fail("PROVIDER_POLICY");
+  const selected=policies[request.role];
+  if(!selected) return fail("PROVIDER_UNREADY");
+  if(selected.role!==request.role || policyHash(selected)!==request.policyHash || !selected.supportedReasoning.some(c=>c.mode===request.reasoning && c.billableWithinCompletionCap)) return fail("PROVIDER_POLICY");
+  if(mode==="live" && (selected.model.startsWith("fake/") || selected.providerOnly.includes("fake") || !selected.baseUrl.startsWith("https://"))) return fail("PROVIDER_POLICY");
+  const bytes=Buffer.byteLength(JSON.stringify(request.messages));
+  if(bytes>131072 || bytes+4096+request.maxOutputTokens>selected.contextTokenLimit || request.maxOutputTokens>selected.maxCompletionTokens) return fail("CONTEXT_LIMIT");
+  return ok(selected);
+}
+
+export function evaluateAdmission(config: AppConfig, operation:"diagnostics"|"synthetic"|"author"): AdmissionResult {
+  if(operation==="author") return evaluatePilotAdmission(config);
+  if(operation==="diagnostics") return {ready:true,blockers:[]};
+  if(config.releaseEvidence.mode!=="live" || config.runtime.providerMode!=="live") return {ready:false,blockers:["release_evidence_fake"]};
+  const a=config.releaseEvidence.admission;
+  if(a.state!=="qualification" && a.state!=="pilot") return {ready:false,blockers:["admission_not_pilot"]};
+  const text=config.providerPolicy.text;
+  const policies=[text.orchestrator,text.writer,config.providerPolicy.image];
+  if(!text.writer) return {ready:false,blockers:["writer_unselected"]};
+  if(policies.some(p=>p && !a.policyHashes.includes(policyHash(p)))) return {ready:false,blockers:["policy_hash_mismatch"]};
+  if([text.orchestrator,text.writer].some(p=>p && (p.model.startsWith("fake/") || p.providerOnly.includes("fake") || !p.baseUrl.startsWith("https://")))) return {ready:false,blockers:["role_policy_fake"]};
+  return {ready:true,blockers:[]};
+}

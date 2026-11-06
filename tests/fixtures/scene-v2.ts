@@ -1,0 +1,11 @@
+import type {Constraint,PlanUnit,Canon,SourceVector,Style,EditorDoc} from "../../src/contracts/domain";
+import {fakeWriterPolicy} from "../../src/config/schema";
+import {constraintsHash} from "../../src/modules/context";
+export const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
+export const unit:PlanUnit={id:id(1),kind:"scene",title:{value:"Die Tür",source:"approved"},purpose:{value:"Mara betritt die Halle.",source:"approved"},pov:{value:"Mara",source:"approved"},location:{value:"Halle",source:"approved"},claims:[],threads:[],targetWords:{value:5,source:"approved"}};
+export const style:Style={scope:"global",globalStyle:"Knappe Sätze.",globalTone:"Unruhig.",chapterModulations:{}};
+export const constraint:Constraint={id:id(2),source:{kind:"outline",revisionId:id(3)},sourceSpan:"Mara öffnet die Tür.",scopeUnitIds:[unit.id],severity:"blocking",kind:"semantic",obligation:"Mara öffnet die Tür."};
+export const canon:Canon={revision:0,facts:[],ledger:[],outlineRevisionId:id(3),styleRevisionId:id(4)};
+export const sourcesFor=(cs:Constraint[]):SourceVector=>({contentVersion:1,outlineRevisionId:id(3),styleRevisionId:id(4),canonRevisionId:id(5),unitVersions:{},constraintHash:constraintsHash(cs)});
+export const inputFor=(constraints:Constraint[]=[constraint])=>({unit,sources:sourcesFor(constraints),constraints,canon,excerpts:[],style,policy:fakeWriterPolicy});
+export const document:EditorDoc={type:"doc",content:[{type:"paragraph",content:[{type:"text",text:"Mara öffnete die schwere Tür.",marks:[]}]}]};

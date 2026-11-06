@@ -1,0 +1,10 @@
+{
+  "version": "5.4.0",
+  "url": "https://github.com/w3c/epubcheck/releases/download/v5.4.0/epubcheck-5.4.0.zip",
+  "sha256": "33350c61038e71dfb3d45a76aed04bf5481e6d5500cb780f6e98db8bbd15a28c",
+  "license": "BSD-3-Clause",
+  "licensePath": "epubcheck-5.4.0/LICENSE.txt",
+  "jarPath": "epubcheck-5.4.0/epubcheck.jar",
+  "companionDirectory": "epubcheck-5.4.0/lib",
+  "installedTreeHash": "6587c7d84c712b1333f0879ccf602c3f0106dfdd57ae6d1e92d5519aab2f7912"
+}

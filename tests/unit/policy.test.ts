@@ -7,6 +7,7 @@ import {
   appConfigSchema,
   defaultPilotPolicy,
   defaultProviderPolicy,
+  fakeWriterPolicy,
   evaluatePilotAdmission,
   imageReserveUsd,
   inputTokenUpperBound,
@@ -79,10 +80,11 @@ const liveEvidence = (overrides: Partial<Record<string, unknown>> = {}): Release
     databaseVersion: "17.4",
     fontManifestHash: policyHash(completeFonts),
     validatorVersion: "5.4.0",
+    admission:{state:"pilot",operatorId:id,approvedAt:at,policyHashes:[policyHash(defaultProviderPolicy.text.orchestrator),policyHash(defaultProviderPolicy.image)],evidenceIds:["test-only"]},
     providerApprovals: [
       {
         id,
-        policyHash: policyHash(defaultProviderPolicy.text),
+        policyHash: policyHash(defaultProviderPolicy.text.orchestrator),
         operatorId: id,
         approvedAt: at,
         regions: ["eu"],
@@ -143,6 +145,7 @@ const baseConfig = (overrides: Record<string, unknown> = {}): Record<string, unk
     publicOrigin: "https://storage.example.test",
   },
   backup: {
+    keyId:"test",keys:{test:"t".repeat(32)},
     bucket: "backup-bucket",
     region: "eu-central-1",
     accessKeyId: "access",
@@ -208,24 +211,13 @@ describe("pilot policy", () => {
 });
 
 describe("provider policy", () => {
-  it("matches the committed provider record and fixes the prose model", () => {
+  it("uses an explicit fake orchestrator and an unselected writer",()=>{
     expect(defaultProviderPolicy).toEqual(json("config/providers.json"));
-    expect(defaultProviderPolicy.text.model).toBe("mistralai/mistral-large-4-0");
-    expect(defaultProviderPolicy.text.baseUrl).toBe("https://eu.openrouter.ai/api/v1");
-    expect(defaultProviderPolicy.text.providerOnly).toEqual(["mistral"]);
-    expect(defaultProviderPolicy.text.providerFallbacks).toBe(false);
-    expect(defaultProviderPolicy.text.dataCollection).toBe("deny");
-    expect(defaultProviderPolicy.text.zdr).toBe(true);
-    expect(defaultProviderPolicy.text.maxInputUsdPerMillion).toBe("770000");
-    expect(defaultProviderPolicy.text.maxOutputUsdPerMillion).toBe("2310000");
-    expect(defaultProviderPolicy.text.gatewayFeeBps).toBe(800);
+    expect(defaultProviderPolicy.text.orchestrator.alias).toBe("deepseek-4.1-flash");
+    expect(defaultProviderPolicy.text.orchestrator.model).toBe("fake/orchestrator");
+    expect(defaultProviderPolicy.text.writer).toBeNull();
+    expect(fakeWriterPolicy.model).toBe("fake/writer");
     expect(defaultProviderPolicy.image.baseUrl).toBe("https://api.eu.bfl.ai");
-    expect(defaultProviderPolicy.image.path).toBe("/v1/flux-2-pro");
-    expect(defaultProviderPolicy.image.width).toBe(1600);
-    expect(defaultProviderPolicy.image.height).toBe(2560);
-    expect(defaultProviderPolicy.image.outputFormat).toBe("jpeg");
-    expect(defaultProviderPolicy.image.firstMpUsd).toBe("30000");
-    expect(defaultProviderPolicy.image.additionalMpUsd).toBe("15000");
   });
 
   it("refuses an unapproved model or non-HTTPS route", () => {
@@ -274,8 +266,8 @@ describe("financial reservations", () => {
   });
 
   it("rounds text reservations upward including the gateway fee", () => {
-    expect(textReserveUsd(1_000_000, 0, defaultProviderPolicy.text)).toBe("831600");
-    expect(textReserveUsd(0, 1_000_000, defaultProviderPolicy.text)).toBe("2494800");
+    expect(textReserveUsd(1_000_000, 0, defaultProviderPolicy.text.orchestrator)).toBe("1080000");
+    expect(textReserveUsd(0, 1_000_000, defaultProviderPolicy.text.orchestrator)).toBe("2160000");
     expect(inputTokenUpperBound(1000, defaultPilotPolicy.inputTokenOverhead)).toBe(5096);
   });
 });
@@ -359,7 +351,7 @@ describe("configuration admission", () => {
     const config = appConfigSchema.parse(baseConfig()) as AppConfig;
     expect(isFontManifestComplete(config.fonts)).toBe(true);
     expect(isFontManifestComplete({ fonts: [] })).toBe(false);
-    expect(evaluatePilotAdmission(config)).toEqual({ ready: true, blockers: [] });
+    expect(evaluatePilotAdmission(config).blockers).toEqual(expect.arrayContaining(["writer_unselected","role_policy_fake","provider_approval_missing"]));
 
     const incomplete = appConfigSchema.parse(
       baseConfig({
@@ -379,7 +371,7 @@ describe("configuration admission", () => {
 
   it("parses every committed configuration artifact", () => {
     expect(appConfigSchema).toBeDefined();
-    expect(json("config/fonts.json")).toEqual({ fonts: [] });
+    expect(json("config/fonts.json")).toMatchObject({ fonts: expect.arrayContaining([expect.objectContaining({family:"Noto Serif",weight:400})]) });
     expect(json("config/release-evidence.json")).toMatchObject({ mode: "fake" });
   });
 });

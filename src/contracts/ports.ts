@@ -1,4 +1,10 @@
 import type {
+  CheckRow,
+  ConstraintRow,
+  ScenePacketRow,
+  CheckpointRow,
+  SyntheticProbeRow,
+  BillingAdjustmentRow,
   AccountRow,
   AssetRow,
   AttemptRow,
@@ -128,19 +134,61 @@ export type LoadKind =
   | "job"
   | "cost";
 
+export interface TableRows {
+  accounts:AccountRow;
+  invites:InviteRow;
+  policies:PolicyRow;
+  projects:ProjectRow;
+  assets:AssetRow;
+  imports:ImportRow;
+  planning_revisions:PlanRow;
+  units:UnitRow;
+  unit_drafts:DraftRow;
+  unit_revisions:RevisionRow;
+  canons:CanonRow;
+  extractions:ExtractionRow;
+  conflicts:ConflictRow;
+  runs:RunRow;
+  snapshots:SnapshotRow;
+  model_tasks:ModelTaskRow;
+  scene_packets:ScenePacketRow;
+  constraints:ConstraintRow;
+  check_results:CheckRow;
+  checkpoints:CheckpointRow;
+  proposals:ProposalRow;
+  jobs:JobRow;
+  attempts:AttemptRow;
+  reservations:ReservationRow;
+  usage_events:UsageRow;
+  counters:CounterRow;
+  cover_batches:CoverBatchRow;
+  cover_layouts:CoverLayoutRow;
+  exports:ExportRow;
+  deletions:DeletionRow;
+  audit_events:AuditRow;
+  runtime_slots:SlotRow;
+  scheduled_ticks:ScheduleRow;
+  synthetic_probes:SyntheticProbeRow;
+  backups:BackupRow;
+  rate_limits:RateRow;
+  billing_adjustments:BillingAdjustmentRow;
+  command_records:CommandRecord;
+}
+export type TableName=keyof TableRows;
+export type TaggedRow<T extends TableName=TableName> = {[K in T]:{table:K;row:TableRows[K]}}[T];
 export interface LoadRowsByKind {
-  account: AccountRow | InviteRow | PolicyRow | CommandRecord | RateRow;
-  project: ProjectRow | UnitRow | PolicyRow | CounterRow;
-  planning: PlanRow | ImportRow | UnitRow;
-  scene: UnitRow | DraftRow | RevisionRow | ProposalRow | ExtractionRow;
-  run: RunRow | SnapshotRow | ProposalRow | ConflictRow | ModelTaskRow;
-  canon: CanonRow | ExtractionRow | ConflictRow | UnitRow | RevisionRow;
-  assets: AssetRow | CoverBatchRow | CoverLayoutRow;
-  export: ExportRow | SnapshotRow | AssetRow;
-  privacy: DeletionRow | ProjectRow | SnapshotRow | ExportRow | AccountRow | InviteRow;
-  ops: AuditRow | BackupRow | ScheduleRow | PolicyRow | AccountRow | JobRow;
-  job: JobRow | SlotRow | AttemptRow | ModelTaskRow;
-  cost: ReservationRow | UsageRow | CounterRow | AttemptRow | PolicyRow;
+  account:TaggedRow<'accounts'|'invites'|'policies'|'command_records'|'rate_limits'>;
+  project:TaggedRow<'projects'|'units'|'policies'|'counters'>;
+  planning:TaggedRow<'planning_revisions'|'imports'|'units'|'constraints'|'check_results'>;
+  scene:TaggedRow<'units'|'unit_drafts'|'unit_revisions'|'proposals'|'extractions'|'scene_packets'|'check_results'>;
+  run:TaggedRow<'runs'|'snapshots'|'proposals'|'conflicts'|'model_tasks'|'constraints'|'scene_packets'|'check_results'|'checkpoints'>;
+  canon:TaggedRow<'canons'|'extractions'|'constraints'|'check_results'|'checkpoints'|'conflicts'|'units'|'unit_revisions'>;
+  assets:TaggedRow<'assets'|'cover_batches'|'cover_layouts'>;
+  export:TaggedRow<'exports'|'snapshots'|'assets'>;
+  privacy:TaggedRow<'deletions'|'projects'|'snapshots'|'exports'|'accounts'|'invites'>;
+  ops:TaggedRow<'audit_events'|'backups'|'scheduled_ticks'|'policies'|'accounts'|'jobs'|'synthetic_probes'|'billing_adjustments'>;
+  job:TaggedRow<'jobs'|'runtime_slots'|'attempts'|'model_tasks'>;
+  cost:TaggedRow<'reservations'|'usage_events'|'counters'|'attempts'|'policies'|'synthetic_probes'|'billing_adjustments'>;
 }
 
 export type LoadRequest = {
@@ -203,7 +251,8 @@ export type TxKind =
   | "schedule_tick"
   | "backup_record"
   | "retention_tick"
-  | "rate_limit";
+  | "rate_limit"
+  | "probe_record";
 
 export type CommitRequest = {
   kind: TxKind;
@@ -244,7 +293,7 @@ export interface ObjectInfo {
 
 export interface SignInput {
   ref: ObjectRef;
-  expiresSeconds: number;
+  expiresSeconds: 60;
 }
 
 export interface RemoteRequest {
@@ -382,11 +431,7 @@ export interface TelemetryPort {
   emit(event: TelemetryEvent): void;
 }
 
-export interface MaintenanceCommand {
-  kind: "migrate" | "doctor" | "restore_check";
-  backupId?: string;
-  target?: "local-isolated";
-}
+export type MaintenanceCommand = {kind:"migrate"|"doctor"}|{kind:"restore_check";backupId:string;target:"local-isolated"|"hosted-isolated";configRef?:string};
 
 export interface MaintenanceResult {
   passed: boolean;
@@ -445,6 +490,7 @@ export interface UsageModule {
 }
 
 export interface GatewayModule {
+  probe(ctx:CallContext,input:{probeId:string;expectedVersion:number}):Promise<import("./errors").Outcome<SyntheticProbeRow>>;
   lookup(
     ctx: CallContext,
     attempt: AttemptRow,

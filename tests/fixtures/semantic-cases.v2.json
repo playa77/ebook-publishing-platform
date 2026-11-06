@@ -1,0 +1,13 @@
+[
+ {"name":"unique-object-duplicated","obligation":"Es gibt genau einen Schlüssel.","draft":"Mara hielt den einzigen Schlüssel. Gleichzeitig hielt Jan denselben Schlüssel.","status":"fail"},
+ {"name":"impossible-travel-time","obligation":"Der Weg dauert zwei Stunden.","draft":"Eine Minute nach dem Aufbruch erreichte Mara die ferne Stadt.","status":"fail"},
+ {"name":"alias-name-mismatch","obligation":"Mara benutzt das Pseudonym Rabe.","draft":"Mara stellte sich als Fuchs vor.","status":"fail"},
+ {"name":"german-tense-break","obligation":"Erzähle im Präteritum.","draft":"Mara öffnete die Tür. Dann geht sie hinein.","status":"fail"},
+ {"name":"pov-break","obligation":"Bleibe bei Maras Wahrnehmung.","draft":"Mara ging hinaus. Jan wusste heimlich längst alles.","status":"fail"},
+ {"name":"missing-beat","obligation":"Mara öffnet die Tür.","draft":"Mara wartete vor der geschlossenen Tür.","status":"fail"},
+ {"name":"outline-style-conflict","obligation":"Die Gliederung verlangt Distanz, der Stil verlangt unmittelbare Gedankenrede.","draft":"Mara wartete schweigend.","status":"unknown"},
+ {"name":"unresolved-prerequisite","obligation":"Die Entscheidung über den Schlüssel muss zuerst geklärt werden.","draft":"Mara benutzte den Schlüssel.","status":"unknown"},
+ {"name":"summary-contradicts-source","obligation":"Mara hat den Schlüssel verloren, unabhängig von der Zusammenfassung.","draft":"Mara nahm ihren Schlüssel heraus.","status":"fail"},
+ {"name":"deliberate-withheld-reveal","obligation":"Das Geheimnis wird erst später enthüllt.","draft":"Mara schwieg über das Geheimnis.","status":"pass"},
+ {"name":"valid-control","obligation":"Mara öffnet die Tür.","draft":"Mara öffnete die schwere Tür.","status":"pass"}
+]
