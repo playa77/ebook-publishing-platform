@@ -341,3 +341,25 @@ Reset uses the same owned network and restores configured bucket metadata via th
 Supabase CLI; it refuses nonlocal or populated Auth/application targets. No domain
 accounts/manuscripts are seeded. Schema version remains none until WP-04.
 The earlier capacity-blocked status is historical; continue with WP-04–WP-07.
+
+## WP-04 — core ownership schema (D1/D2/D3 2.0.0)
+
+Added migrations 001–002 and real catalog/negative-privilege tests. They create
+nonlogin migrator/web/worker/backup roles, fixed-search-path identity/ownership
+helpers, private schema, core typed columns and deferred composite ownership/unit
+pointers. FORCE RLS is enabled immediately, including migration metadata. Runtime
+roles own no table and cannot elevate roles, create tables or manufacture accounts.
+Identity resolution is restricted to its declared verified-subject seam. Empty
+project setup metadata is decoded consistently with D2; production approval gates
+remain later packages. No accounts/Auth users/manuscripts were seeded.
+
+The local developer maintenance credential selects the real local service's
+`supabase_admin` principal for initial role/Auth-reference grants; all application
+DDL then executes as `app_migrator`. Hosted migration principals must have the
+reviewed memberships/Auth REFERENCES grant preprovisioned; no hosted superuser or
+backup BYPASSRLS capability is assumed. Negative checks use the separate generated
+runtime login, not an administrator connection with a changed current role.
+
+Actual lint/typecheck and `schema-core.test.ts` pass (four tests). The core schema
+is applied from an empty app schema on real PostgreSQL 17; versions 1–2 are the
+current DDL checkpoint. Canon/run/job/probe tables are not yet claimed. Next WP-05.

@@ -796,7 +796,7 @@ export const projectRowSchema = z
     ownerId: idSchema,
     mode: modeSchema,
     genre: genreSchema,
-    title: titleSchema,
+    title: z.string().max(250),
     authorName: authorNameSchema,
     phase: phaseSchema,
     contentVersion: revSchema,

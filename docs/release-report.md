@@ -99,3 +99,10 @@ to run simultaneously, with about 786 MB free. Original work/data remain preserv
 checks pass, including process restart and backup survival across primary DB
 replacement. No broad Docker pruning, hosted service or paid call was used.
 Phase A remains in progress: schema/persistence packages WP-04–WP-07 are next.
+
+## WP-04 checkpoint
+
+Migrations 001–002, lint/typecheck and four real core-schema/security checks pass.
+Ownership/role/pointer catalog constraints are present, FORCE RLS is active, browser
+schema access and runtime escalation/DDL/account manufacturing fail. No legitimate
+business state is injected. Schema checkpoint: 2; WP-05–WP-07 remain pending.
