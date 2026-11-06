@@ -363,3 +363,21 @@ runtime login, not an administrator connection with a changed current role.
 Actual lint/typecheck and `schema-core.test.ts` pass (four tests). The core schema
 is applied from an empty app schema on real PostgreSQL 17; versions 1–2 are the
 current DDL checkpoint. Canon/run/job/probe tables are not yet claimed. Next WP-05.
+
+## WP-05 — writing/job/metering schema (D1/D2/D3 2.0.0)
+
+Migrations 003–004 add role-aware tasks, immutable run authorization and counters,
+source packets/constraints/checks/checkpoints, canon/revision/proposal links, jobs,
+attempts, reservations, usage, slots, command records, rate buckets and billing
+adjustments. All monetary columns use integer-valued NUMERIC, never floating point.
+Unique active account/project runs include paused nonterminal identities. Provider
+IDs, per-attempt holds/settlements and scope-period counters are unique. Fixed-path
+atomic claim/reservation helpers use row locks and bounded execution slots; no
+handler dispatch or paid work is enabled. Recovery/deletion job claims retain their
+narrow bookkeeping purpose even when content access is fenced.
+
+Contract review also aligned the exact D2 §8.12 mutation fields and added the
+§9.1 `preflight` job stage; obsolete foundation shapes are not accepted as v2.
+Lint/typecheck and the named core/runtime suites passed (eight tests), applying
+versions 1–4 from empty app state. These are schema/catalog/security checks, not
+populated financial-race or manuscript evidence. Next WP-06, then Store/CLI WP-07.

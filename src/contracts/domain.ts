@@ -1175,7 +1175,7 @@ export const jobPayloadSchema = z.discriminatedUnion("kind", [
     kind: z.literal("run.unit"),
     runId: idSchema,
     unitId: idSchema,
-    stage: z.enum(["draft", "review", "extract", "repair"]),
+    stage: z.enum(["preflight", "draft", "review", "extract", "repair"]),
     taskId: idSchema.optional(),
   }),
   z.strictObject({

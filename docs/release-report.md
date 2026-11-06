@@ -106,3 +106,10 @@ Migrations 001–002, lint/typecheck and four real core-schema/security checks p
 Ownership/role/pointer catalog constraints are present, FORCE RLS is active, browser
 schema access and runtime escalation/DDL/account manufacturing fail. No legitimate
 business state is injected. Schema checkpoint: 2; WP-05–WP-07 remain pending.
+
+## WP-05 checkpoint
+
+Versions 3–4 and eight named core/runtime checks pass with lint and strict typing.
+V2 role/source/check tables, active-run uniqueness, deferred references and integer
+finance storage exist. Production queue/metering handlers remain later owners;
+no fake business rows or financial-race completion claim is used as evidence.
