@@ -55,6 +55,32 @@ journey/lifecycle helpers and canonical preview contract. Next: finish WP-14,
 then the actual metered preparation caller in WP-15 before drafting packages.
 WP-14–20 are **not complete** at this checkpoint.
 
+## WP-14 — incomplete core checkpoint — 2026-11-07
+
+D1/D3 2.0.0 and D2 2.0.1; schema remains 13. The pure core is implemented in
+`src/modules/canon.ts`, constructed as `canonCore` only by root. It resolves
+candidate references to stable fact IDs, rejects missing/cyclic/forged sources,
+protects explicit outline/style and accepted-fact authority, preserves retired
+history, checks knowledge timing, finite motifs and explicit decision closure,
+and preserves supplied nonfiction hedges. `src/prompts/extract.v2.md` records the
+German extraction/seed obligations. The helper's `applyDelta` returns a newly
+validated value; it is deliberately not the committed `Canon.handle(apply)` seam.
+
+Literal-only fixtures and the two required named validator suites pass **12/12**.
+Lint, typecheck, production build and diff checks pass. No approved plan, canon,
+extraction, proposal or manuscript row was inserted as a fixture. These tests
+cannot establish an approved seed or authoritative publication.
+
+WP-14 is still **incomplete**: bind the pure core to actual persisted approved
+outline/style and extraction/proposal sources, implement the declared internal
+Canon seed/validate/apply boundaries with ownership/version checks, and retain
+fail-closed publication until the genuine acceptance transaction exists. Then
+WP-15 must prove seed integration using the first real persisted planning/model
+caller; WP-16 owns accepted-scene publication and later packages own replay.
+Do not start dependent packages or relabel this checkpoint as a completed WP-14.
+Touched files: canon module, extraction prompt, root construction and literal
+fixtures/validator suites. No provider/configuration/qualification gate changed.
+
 ## Historical Phase B handoff — 2026-11-06
 
 The workspace was updated first: `git fetch origin`, then fast-forward from

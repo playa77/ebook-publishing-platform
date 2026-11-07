@@ -26,6 +26,11 @@ on this environment. The supported Webpack development mode passes that journey;
 the normal test runner uses it. Production Turbopack build passes. No test is
 removed or ignored. See the runbook for commands and the bounded private logs.
 
+WP-14's pure core is checkpointed separately: its two literal validator suites
+now pass **12/12**, and lint/typecheck/build/diff checks pass. The named internal
+Canon service and persisted source loading/publication remain incomplete; a pure
+`applyDelta` value is not a database acceptance operation.
+
 Next is completing WP-14's persisted service boundary and WP-15's genuine metered
 preparation workflow, followed in dependency order by WP-16–20. A null live writer
 and the existing qualification gates remain; this is not a release candidate.

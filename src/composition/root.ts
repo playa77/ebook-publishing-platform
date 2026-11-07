@@ -12,6 +12,7 @@ import { cliCommandSchema, type CliResult } from "../contracts/operations";
 import type { App, ModeRole, Store, MaintenancePort } from "../contracts/ports";
 import { createClock } from "../adapters/clock";
 import { createTelemetry } from "../adapters/telemetry";
+import { createCanonCore } from "../modules/canon";
 import { createPlanning } from "../modules/planning";
 import { createImportPersistence } from "../persistence/store";
 import { createStore } from "../persistence/store";
@@ -52,6 +53,7 @@ export function readConfig(role: ModeRole): AppConfig {
 }
 export interface FoundationApp extends App {
     store: Store;
+    canonCore: ReturnType<typeof createCanonCore>;
     usage: import("../contracts/ports").UsageModule;
     identity: Pick<import("../contracts/ports").IdentityModule, "refresh">;
     gateway: Pick<import("../contracts/ports").GatewayModule, "execute" | "lookup">;
@@ -119,7 +121,7 @@ export function buildApp(role: ModeRole, input: unknown, writeLog: (line: string
         return r.ok && r.value.confidence === 'actual';
     });
     return {
-        store, maintenance, gateway, usage: createUsage(gatewayDb, config.providerPolicy.text, usagePersistence(data)),
+        store, canonCore: createCanonCore(), maintenance, gateway, usage: createUsage(gatewayDb, config.providerPolicy.text, usagePersistence(data)),
         identity: createIdentity(privateDb, cookies => createAuth({ url: config.auth.url, key: config.auth.publishableKey, appUrl: config.runtime.appUrl }, cookies)),
         cli: { async execute(input, ctx): Promise<Outcome<CliResult>> {
                 const command = cliCommandSchema.safeParse(input);
