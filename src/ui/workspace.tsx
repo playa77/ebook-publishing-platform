@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProjectRow, CommitReceipt,ProjectView,AllowanceView } from '@/contracts/domain';
+import { Planning } from './planning';
 import { api } from './client';
 export function Workspace({ projectId }: {
     projectId?: string;
@@ -35,14 +36,7 @@ export function Workspace({ projectId }: {
     }
     catch (e) {
         setMessage((e as Error).message);
-    } }}><label>Titel<input name="title" defaultValue={project.title} maxLength={250}/></label><label>Autor:innenname<input name="author" defaultValue={project.authorName} maxLength={150}/></label><button disabled={project.phase === 'archived'}>Speichern</button></form><label>Originaldatei hochladen (Text, Markdown oder DOCX)<input type="file" accept=".txt,.md,.docx" disabled={project.phase === 'archived'} onChange={async (e) => { const file = e.target.files?.[0]; if (!file)
-        return; try {
-        await api('/projects/' + project.id + '/imports', file, { raw: true, mime: file.name.endsWith('.md') ? 'text/markdown' : file.type || 'text/plain', version: project.contentVersion });
-        setMessage('Originaldatei privat gespeichert. Die Auswertung folgt in der nächsten Phase.');
-    }
-    catch (e) {
-        setMessage((e as Error).message);
-    } }}/></label><button disabled={project.phase === 'archived'} onClick={async () => { try {
+    } }}><label>Titel<input name="title" defaultValue={project.title} maxLength={250}/></label><label>Autor:innenname<input name="author" defaultValue={project.authorName} maxLength={150}/></label><button disabled={project.phase === 'archived'}>Speichern</button></form><Planning projectId={project.id} version={project.contentVersion} disabled={project.phase !== 'setup'} onChange={load}/><button disabled={project.phase === 'archived'} onClick={async () => { try {
         await api('/projects/' + project.id + '/archive', { archived: true }, { version: project.contentVersion });
         await load();
     }

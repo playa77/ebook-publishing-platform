@@ -1,5 +1,39 @@
 # Release Report
 
+Status: **WP-13 implemented and verified; Phase C through WP-20 remains incomplete.**
+
+## Current writing-workflow checkpoint — 2026-11-07
+
+The checkout was updated to merged Phase B `dc717b1` before implementation.
+Pinned dependencies and real local services were refreshed; no paid model call,
+hosted deployment or pilot admission occurred. Schema is version 13.
+
+WP-13 now preserves and safely parses pasted text, Markdown and DOCX through
+the real HTTP → private ingress → database queue → worker path. It includes
+owned previews/original downloads, idempotent submissions, optimistic guards,
+visible parse failures and restart recovery. Unsafe DOCX input never produces
+an approved or partially parsed outline. D2 2.0.1 adds the required preview read.
+
+Lint/typecheck passed. The complete runner passed **153 tests** (23 isolated
+schema/harness plus 130 unit/boundary/integration), and production build passed.
+Following extra archive validation, the affected suites passed **31/31**, comprising
+20 import/security/restart tests and 11 literal canon-core tests. The latter are
+pure validator evidence, **not** an approved seed, persisted extraction, acceptance,
+replay, YOLO or restore journey. Those paths are not implemented at this checkpoint.
+
+The existing browser sign-in check exposed repeated Turbopack development reloads
+on this environment. The supported Webpack development mode passes that journey;
+the normal test runner uses it. Production Turbopack build passes. No test is
+removed or ignored. See the runbook for commands and the bounded private logs.
+
+Next is completing WP-14's persisted service boundary and WP-15's genuine metered
+preparation workflow, followed in dependency order by WP-16–20. A null live writer
+and the existing qualification gates remain; this is not a release candidate.
+
+---
+
+## Historical Phase B report
+
 Status: **Phase B implemented through WP-12; local verification only.**
 Updated on 2026-11-06 against canonical D1/D2/D3 v2.0.0.
 

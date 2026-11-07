@@ -36,7 +36,7 @@ export async function inTransaction<T>(pool: Pool, context: CallContext, work: (
         client.release(broken);
     }
 }
-export const migrationFiles = ["001_roles.sql", "002_core.sql", "003_canon_runs.sql", "004_jobs_usage.sql", "005_exports_ops.sql", "006_retention.sql", "007_private_application.sql", "008_metering.sql", "009_metering_bounds.sql", "010_rewrite_allowances.sql", "011_runtime_projections.sql", "012_active_invitation_policy.sql"] as const;
+export const migrationFiles = ["001_roles.sql", "002_core.sql", "003_canon_runs.sql", "004_jobs_usage.sql", "005_exports_ops.sql", "006_retention.sql", "007_private_application.sql", "008_metering.sql", "009_metering_bounds.sql", "010_rewrite_allowances.sql", "011_runtime_projections.sql", "012_active_invitation_policy.sql", "013_outline_import.sql"] as const;
 export type MigrationState = {
     version: number;
     checksum: string;

@@ -18,7 +18,7 @@ export function createDispatcher(db: PrivatePersistence, auth: AuthPort, encrypt
             await db.delivery(intent.id, ctx, result.value.authUserId);
             return;
         }
-        if (job.payload.kind === 'cost.lookup') {
+        if (job.payload.kind === 'cost.lookup' || job.payload.kind === 'import.parse') {
             const known = await lookup(job);
             if (!known)
                 throw makeFault('PROVIDER_UNREADY', job.id);

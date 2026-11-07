@@ -76,7 +76,7 @@ Node-Worker. Java 21/EPUBCheck werden für den späteren Export benötigt.
 | Implementiert und ausgeführt | [Runbook](docs/runbook.md), [Release-Bericht](docs/release-report.md) |
 
 README ist die Übersicht; Architektur, technische Spezifikation und
-Implementierungsplan sind die einzigen aktuellen Designdokumente (v2.0.0).
+Implementierungsplan sind die einzigen aktuellen Designdokumente (D1/D3 v2.0.0, D2 v2.0.1).
 Rollen, Szenenpaket und Prüfharness stehen in der Spezifikation §8.5, der
 Messplan in §12.4. Frühere Fassungen liegen ausschließlich in der Git-Historie.
 Runbook und Release-Bericht dokumentieren den Implementierungsstand und

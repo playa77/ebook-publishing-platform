@@ -98,7 +98,7 @@ describe("canonical design documents", () => {
     expect(designFiles.sort()).toEqual([...canonical].sort());
     for (const name of canonical) {
       const document = read(`docs/${name}`);
-      expect(document).toContain("Version: **2.0.0**");
+      expect(document).toContain(name === "technical-spec.md" ? "Version: **2.0.1**" : "Version: **2.0.0**");
       expect(document).not.toMatch(/(?:01-design-document|02-technical-specification|03-implementation-roadmap)-v|writing-system\.md|v1\.[01]\.[01]/);
     }
     for (const obsolete of [

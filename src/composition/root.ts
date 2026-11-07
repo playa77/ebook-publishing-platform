@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import providers from "../../config/providers.json";
+import pilot from "../../config/pilot-policy.json";
+import fonts from "../../config/fonts.json";
+import evidence from "../../config/release-evidence.json";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import pino from "pino";
@@ -9,6 +12,8 @@ import { cliCommandSchema, type CliResult } from "../contracts/operations";
 import type { App, ModeRole, Store, MaintenancePort } from "../contracts/ports";
 import { createClock } from "../adapters/clock";
 import { createTelemetry } from "../adapters/telemetry";
+import { createPlanning } from "../modules/planning";
+import { createImportPersistence } from "../persistence/store";
 import { createStore } from "../persistence/store";
 import { migrate } from "../persistence/transactions";
 import { applicationStore } from '../persistence/application-store';
@@ -25,8 +30,8 @@ import { createDispatcher } from '../runtime/dispatcher';
 import { createQueue,jobContext } from '../runtime/queue';
 import { createHttp } from '../entrypoints/http';
 import { createIdentity, openEmail } from '../modules/identity';
-const root = process.cwd();
-function json(file: string): unknown { return JSON.parse(readFileSync(resolve(root, "config", file), "utf8")); }
+const configuration: Record<string, unknown> = { "providers.json": providers, "pilot-policy.json": pilot, "fonts.json": fonts, "release-evidence.json": evidence };
+function json(file: string): unknown { return configuration[file]; }
 /** Only this module constructs process clients. No caller receives a vendor SDK. */
 export function readConfig(role: ModeRole): AppConfig {
     const env = process.env, environment = env.APP_ENV, providerMode = env.PROVIDER_MODE;
@@ -101,10 +106,13 @@ export function buildApp(role: ModeRole, input: unknown, writeLog: (line: string
     const store = applicationStore(foundationStore, privateDb);
     const objects = createObjects(config.objects.url, config.objects.key);
     const auth = createAuth({ url: config.auth.url, key: config.auth.publishableKey, adminKey: config.auth.adminKey, appUrl: config.runtime.appUrl });
+    const importDb = createImportPersistence(data);
+    const planning = createPlanning(importDb, objects, { compressedBytes: config.pilotPolicy.importCompressedBytes, expandedBytes: config.pilotPolicy.importExpandedBytes, entries: config.pilotPolicy.importZipEntries, words: config.pilotPolicy.importWords, timeoutMs: config.pilotPolicy.importTimeoutMs });
     const gatewayDb = gatewayPersistence(data);
     const text = createTextPort(createHttpPort({ mode: config.runtime.providerMode, textBaseUrl: config.providerPolicy.text.orchestrator.baseUrl }), config.providerPolicy.text, config.runtime.providerMode === 'fake' ? 'fake-local-key' : config.secrets.openrouterKey ?? '');
     const gateway = createGateway(gatewayDb, text, config.providerPolicy.text);
     const dispatch = createDispatcher(privateDb, auth, config.auth.transientEncryptionKey, async (job) => {
+        if (job.payload.kind === 'import.parse') { await planning.step(job); return true; }
         if (job.payload.kind !== 'cost.lookup')
             return false;
         const ctx = jobContext(job), a = await gatewayDb.load(ctx, job.payload.attemptId), r = await gateway.lookup(ctx, a);
@@ -140,7 +148,7 @@ export function buildApp(role: ModeRole, input: unknown, writeLog: (line: string
                 const result = await maintenance.run({ kind: "migrate" });
                 return result.ok ? ok(result.value.report) : err({ ...result.error, requestId: ctx.requestId });
             } },
-        http: createHttp(config, privateDb, store, objects, usagePersistence(data)),
+        http: createHttp(config, privateDb, store, objects, usagePersistence(data), importDb),
         worker: { async tick(tick) {
                 if (role !== 'worker')
                     return err(makeFault('OPERATOR_REQUIRED', randomUUID()));
@@ -164,6 +172,8 @@ export function buildApp(role: ModeRole, input: unknown, writeLog: (line: string
                     if (job.payload.kind === 'cost.lookup' && index < 3) {
                         await queue.finish(job,{state:'done',nextAt:new Date(Date.now()+[120000,600000,3600000][index]!).toISOString(),nextJobs:[{...job.payload,lookupIndex:index+1}],fault});
                     }
+                    else if (job.payload.kind === 'import.parse' && ['INVALID_INPUT', 'INPUT_LIMIT', 'MALFORMED_ARCHIVE', 'TRACKED_CHANGES', 'UNSUPPORTED_FORMAT'].includes(fault.code))
+                        await queue.finish(job,{state:'failed',nextJobs:[],fault});
                     else
                         await queue.finish(job,{state:'paused',nextJobs:[],fault});
                     return ok({ claimed: 1, completed: 0, paused: 1, nextPollAt: tick.now });
