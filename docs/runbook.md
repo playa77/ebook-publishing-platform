@@ -5,7 +5,83 @@ define requirements. README and the three canonical design documents own those.
 The current handoff below supersedes the historical checkpoints that follow.
 Canonical D1/D2/D3 v2.0.0 govern; implementation history is not a specification.
 
-## Current Phase B handoff — 2026-11-06
+## Current Phase C checkpoint — WP-13 — 2026-11-07
+
+Baseline: D1/D3 2.0.0, D2 2.0.1. Environment updated first by fetching origin
+and fast-forwarding from `643db8c` to merged Phase B `dc717b1`. Ran `npm ci`
+with Node 26.13.0/npm 11.20.0 and `env:up`. After environment resume, the two
+stopped owned boundary-fake containers were restarted; Auth/DB/Storage/mail
+and both independent fakes are healthy. No paid inference or hosted action.
+
+WP-13 implements private paste/Markdown/DOCX imports through HTTP, persisted
+import/job rows and the fenced worker. Original text/bytes remain available;
+`GET /projects/:p/inputs` shows the latest 100 owned imports, parsed preview and
+warnings. D2 2.0.1 closes this previously absent preview-read seam. POST inputs
+and original uploads return 202 JobTickets. Duplicate submissions reuse their
+original ticket. Version conflicts cannot create another import. Parsing does
+not approve preparation or enable prose. Failed archives retain their originals
+and show a failed job plus German guidance, with no partial parsed outline.
+
+DOCX uses lazy ZIP entry iteration, actual byte/ratio/count/deadline limits,
+CRC checks, strict paths and SAX XML. It rejects macros/embedded active content,
+external relationships, DTD/entities and unresolved tracked changes. Inherited
+heading styles, list depth, tabs and line breaks are extracted; ignored layout,
+images/comments are described by warnings. Text input retains exact indentation,
+Markdown/list/fence content and supplied values. Imported HTML stays escaped text.
+The configured import caps are passed to the worker parser.
+
+Forward migration 013 adds only a narrow `enqueue_import` capability; runtime
+web roles still cannot insert arbitrary jobs. Schema version is **13**; previous
+migration bytes/checksums are unchanged. Author job-status reads now select only
+the owned job, without querying restricted worker tables.
+
+Development and the test harness use the supported `next dev --webpack` mode.
+On this managed filesystem Turbopack development repeatedly reloaded the sign-in
+page before browser actions completed. Static configuration imports, externalizing
+yauzl and buffering diagnostics alone did not resolve it; the same real browser
+journey passed with Webpack. Production `next build` still uses Turbopack and passes.
+Private web diagnostics are bounded in memory and saved under ignored `work/`
+after process shutdown. No checks are disabled or skipped by the normal runner.
+
+Verification: lint and typecheck passed; the full runner passed 23 isolated
+schema/Store/harness tests and 130 unit/boundary/ownership/integration tests
+(including 11 literal canon-core tests staged for WP-14). Production build passed.
+After additional ZIP checks, the affected named DOCX/import and canon suites
+passed **31/31**, including **20 WP-13 tests** and queued-import restart. No schema,
+account or business rows were fabricated to obtain passing pipeline evidence.
+Touched areas: formats/outline/docx, planning, Store/import transaction and queue
+registration, HTTP/types/root, planning/workspace UI, migration 013, fixtures,
+journey/lifecycle helpers and canonical preview contract. Next: finish WP-14,
+then the actual metered preparation caller in WP-15 before drafting packages.
+WP-14–20 are **not complete** at this checkpoint.
+
+## WP-14 — incomplete core checkpoint — 2026-11-07
+
+D1/D3 2.0.0 and D2 2.0.1; schema remains 13. The pure core is implemented in
+`src/modules/canon.ts`, constructed as `canonCore` only by root. It resolves
+candidate references to stable fact IDs, rejects missing/cyclic/forged sources,
+protects explicit outline/style and accepted-fact authority, preserves retired
+history, checks knowledge timing, finite motifs and explicit decision closure,
+and preserves supplied nonfiction hedges. `src/prompts/extract.v2.md` records the
+German extraction/seed obligations. The helper's `applyDelta` returns a newly
+validated value; it is deliberately not the committed `Canon.handle(apply)` seam.
+
+Literal-only fixtures and the two required named validator suites pass **12/12**.
+Lint, typecheck, production build and diff checks pass. No approved plan, canon,
+extraction, proposal or manuscript row was inserted as a fixture. These tests
+cannot establish an approved seed or authoritative publication.
+
+WP-14 is still **incomplete**: bind the pure core to actual persisted approved
+outline/style and extraction/proposal sources, implement the declared internal
+Canon seed/validate/apply boundaries with ownership/version checks, and retain
+fail-closed publication until the genuine acceptance transaction exists. Then
+WP-15 must prove seed integration using the first real persisted planning/model
+caller; WP-16 owns accepted-scene publication and later packages own replay.
+Do not start dependent packages or relabel this checkpoint as a completed WP-14.
+Touched files: canon module, extraction prompt, root construction and literal
+fixtures/validator suites. No provider/configuration/qualification gate changed.
+
+## Historical Phase B handoff — 2026-11-06
 
 The workspace was updated first: `git fetch origin`, then fast-forward from
 `643db8c` to `0653d82` (merged Phase A). `npm ci` ran with the exact Node

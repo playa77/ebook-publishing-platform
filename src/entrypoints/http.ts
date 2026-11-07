@@ -8,6 +8,8 @@ import { createAuth } from '../adapters/auth';
 import type { PrivatePersistence } from '../persistence/private';
 import { reportInputSchema, type UsageReport, type ReportInput } from '../contracts/domain';
 import { policyHash } from '../config/schema';
+import { createPlanning } from '../modules/planning';
+import type { ImportPersistence } from '../persistence/store';
 import { createAssets } from '../modules/assets';
 import { createProjects } from '../modules/projects';
 import { createOperations } from '../modules/operations';
@@ -16,7 +18,7 @@ import { emailDigest } from '../modules/identity';
 const statusFor = (code: FaultCode) => code === 'UNAUTHENTICATED' ? 401 : ['ACCESS_DISABLED', 'OPERATOR_REQUIRED', 'RECENT_AUTH_REQUIRED'].includes(code) ? 403 : code === 'NOT_FOUND' ? 404 : code === 'RATE_LIMITED' ? 429 : code === 'INPUT_LIMIT' ? 413 : code === 'UNSUPPORTED_FORMAT' ? 415 : code === 'DATABASE_UNAVAILABLE' ? 503 : ['STALE_VERSION', 'IDEMPOTENCY_CONFLICT'].includes(code) ? 409 : 400;
 export function createHttp(config: AppConfig, db: PrivatePersistence, store: Store, objects: ObjectPort, usage: {
     report(ctx: CallContext, input: ReportInput): Promise<UsageReport>;
-}): HttpApplication {
+}, imports: ImportPersistence): HttpApplication {
     return { async dispatch(req) {
             const requestId = randomUUID(), cookies: CookieChange[] = [];
             const headers = { 'Cache-Control': 'no-store, private', 'Pragma': 'no-cache', 'Vary': 'Cookie', 'X-Content-Type-Options': 'nosniff' };
@@ -36,7 +38,7 @@ export function createHttp(config: AppConfig, db: PrivatePersistence, store: Sto
                 const auth = createAuth({ url: config.auth.url, key: config.auth.publishableKey, appUrl: config.runtime.appUrl }, { ...req.cookies });
                 const ctx: CallContext = { actor: { role: 'anonymous', requestId }, requestId, idempotencyKey: key, now: new Date().toISOString() };
                 const path = req.path.slice(7).split('/').filter(Boolean);
-                const parse = () => { if (req.body.length > 2097152)
+                const parse = (cap = 2097152) => { if (req.body.length > cap)
                     throw makeFault('INPUT_LIMIT', requestId); try {
                     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(req.body)) as unknown;
                 }
@@ -114,7 +116,7 @@ export function createHttp(config: AppConfig, db: PrivatePersistence, store: Sto
                     const j = r.value.rows.find(t => t.table === 'jobs' && t.row.id === path[1]);
                     if (!j || j.table !== 'jobs')
                         throw makeFault('NOT_FOUND', requestId);
-                    return reply({ id: j.row.id, state: j.row.state, message: j.row.state === 'done' ? 'Auftrag abgeschlossen.' : j.row.state === 'ambiguous' ? 'Bitte den Betrieb kontaktieren.' : 'Auftrag wird verarbeitet.', updatedAt: j.row.updatedAt, nextAction: j.row.state === 'done' ? 'none' : j.row.state === 'ambiguous' ? 'operator_attention' : 'wait' });
+                    return reply({ id: j.row.id, state: j.row.state, message: j.row.state === 'failed' ? 'Auswertung fehlgeschlagen. Bitte die Hinweise beim Original prüfen.' : j.row.state === 'done' ? 'Auftrag abgeschlossen.' : j.row.state === 'ambiguous' ? 'Bitte den Betrieb kontaktieren.' : 'Auftrag wird verarbeitet.', updatedAt: j.row.updatedAt, nextAction: j.row.state === 'failed' ? 'edit_input' : j.row.state === 'done' ? 'none' : j.row.state === 'ambiguous' ? 'operator_attention' : 'wait' });
                 }
                 const guard: Guard = { unitVersions: {} };
                 if (path[0] === 'ops') {
@@ -167,6 +169,12 @@ export function createHttp(config: AppConfig, db: PrivatePersistence, store: Sto
                             guard.contentVersion = Number(version.replaceAll('"', ''));
                         }
                     }
+                    if (id && path[2] === 'inputs' && req.method === 'GET') return reply({ items: await imports.list(ctx, id) });
+                    if (id && path[2] === 'inputs' && req.method === 'POST') {
+                        const command = publicCommandSchema.safeParse({ op: 'planning.input', projectId: id, input: parse(config.pilotPolicy.importCompressedBytes + 65536) });
+                        if (!command.success || command.data.op !== 'planning.input') throw makeFault('INVALID_INPUT', requestId);
+                        return reply(await createPlanning(imports, objects).input(ctx, id, guard.contentVersion!, command.data.input), 202);
+                    }
                     if (path[2] === 'assets' && path[4] === 'download' && req.method === 'GET') {
                         return reply(await createAssets(db, objects, config.pilotPolicy.importCompressedBytes).download(ctx, id!, path[3]!));
                     }
@@ -179,10 +187,8 @@ export function createHttp(config: AppConfig, db: PrivatePersistence, store: Sto
                         const p = (await db.projects(ctx, id))[0];
                         if (!p)
                             throw makeFault('NOT_FOUND', requestId);
-                        if (p.contentVersion !== guard.contentVersion)
-                            throw makeFault('STALE_VERSION', requestId);
                         const asset = await createAssets(db, objects, config.pilotPolicy.importCompressedBytes).ingest(ctx, id!, req.body, mime!);
-                        return reply({ entityIds: [asset.id], unitVersions: {}, jobIds: [] }, 201);
+                        return reply(await imports.start(ctx, id!, guard.contentVersion!, { assetId: asset.id, sourceKind: mime === 'text/markdown' ? 'markdown' : mime === 'text/plain' ? 'paste' : 'docx' }), 202);
                     }
                     const op = !id && req.method === 'POST' ? 'projects.create' : path[2] === 'archive' && req.method === 'POST' ? 'projects.archive' : id && req.method === 'PATCH' ? 'projects.update' : undefined;
                     const command = publicCommandSchema.safeParse({ op, input: parse(), ...(id ? { projectId: id } : {}) });

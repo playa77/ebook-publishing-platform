@@ -460,6 +460,7 @@ export function decodeCommand(input: unknown, requestId: string): Outcome<Comman
 // ---------------------------------------------------------------------------
 
 export const querySchema = z.discriminatedUnion("op", [
+  z.strictObject({ op: z.literal("planning.imports"), input: z.strictObject({}) }),
   z.strictObject({
     op: z.literal("projects.list"),
     input: z.strictObject({
@@ -513,6 +514,7 @@ export type PublicResponseData =
   | ProjectView
   | ProjectRow
   | Page<ProjectRow>
+  | Page<import("./domain").ImportRow>
   | Page<PlanRow>
   | Page<RevisionRow>
   | Page<CoverView>
@@ -763,6 +765,7 @@ export const responseDataSchema = z.union([
   projectViewSchema,
   projectRowSchema,
   pageOf(projectRowSchema),
+  pageOf(importRowSchema),
   pageOf(planRowSchema),
   pageOf(revisionRowSchema),
   pageOf(coverViewSchema),

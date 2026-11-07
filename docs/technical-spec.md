@@ -1,6 +1,6 @@
 # Document 2 — AI-Assisted Author Platform: Technical Specification
 
-Version: **2.0.0**
+Version: **2.0.1**
 Date: **2026-11-06**
 Status: **proposed design; implementation evidence is recorded separately**
 Document ID: **D2**
@@ -11,6 +11,7 @@ Delivery: **Implementable private pilot; production activation requires the expl
 
 | Version | Date | Change |
 |---|---|---|
+| 2.0.1 | 2026-11-06 | Close WP-13 import-preview read seam: planning.imports and Page<ImportRow>. |
 | 2.0.0 | 2026-11-06 | Complete canonical revision: DeepSeek orchestration, prose-only writer, bounded context and checking, role-aware metering and qualification. Previous revisions remain in Git history only. |
 
 Canonical contracts: this file is complete for implementation; no older document or companion protocol is required. Read D1 for product authority and D3 for sequencing. Implemented v1 schemas/config are migration inputs, not permission to retain single-model dispatch.
@@ -344,6 +345,7 @@ Command endpoints require `Idempotency-Key` (UUID or 16–128 safe printable cha
 | GET `/projects/:p` | `projects.get` | `ProjectView`; workspace. |
 | PATCH `/projects/:p` | `projects.update`: `{title:Text?,authorName:Text?,genre:Genre?,frontMatter:EditorDoc?,backMatter:EditorDoc?}`, If-Match | `ProjectView`; metadata/editor. Mode changes require a new project after preparation approval. |
 | POST `/projects/:p/archive` | `projects.archive`: `{archived:boolean}`, If-Match | `CommitReceipt`; project list. Cancel active work when archiving; unarchive checks active-project limit. |
+| GET `/projects/:p/inputs` | `planning.imports`: empty query | `Page<ImportRow>` (latest 100, newest first); private original/parsed preview and parse warnings; no approval implied. |
 | POST `/projects/:p/inputs` | `planning.input`: `{kind:"idea"|"outline",format:"paste"|"markdown",text:Text}`, If-Match | 202 `JobTicket`; planning form. |
 | POST `/projects/:p/imports` | `assets.import`: multipart file + `kind:"outline"`, If-Match | 202 `JobTicket`; import form. Reject `.doc` with German conversion guidance. |
 | GET `/projects/:p/plans` | `planning.list`, query kind/cursor | `Page<PlanRow>`; planning review. |

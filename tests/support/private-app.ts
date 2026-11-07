@@ -29,7 +29,7 @@ export async function verify(email: string, type = 'invite', since = 0) { const 
     if (set.status !== 200)
         throw new Error(`Password failed: ${set.body.error?.code}`);
 } return session; }
-let web: ChildProcess, worker: ChildProcess;
+let web: ChildProcess, worker: ChildProcess, webLog = '';
 export async function startApp() {
     const app = buildApp('cli', readConfig('cli'));
     try {
@@ -40,12 +40,13 @@ export async function startApp() {
     finally {
         await app.close();
     }
-    web = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--port', '3000'], { env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    web = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--webpack', '--port', '3000'], { env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
     // Keep diagnostics private; do not print request URLs or token hashes.
-    const { createWriteStream } = await import('node:fs');
-    const log = createWriteStream('work/private-web.log', { flags: 'w', mode: 0o600 });
-    web.stdout?.pipe(log);
-    web.stderr?.pipe(log);
+    // Keep diagnostics bounded and write them only after the app stops.
+    webLog = '';
+    const capture = (chunk: Buffer) => { webLog = (webLog + chunk.toString()).slice(-1048576); };
+    web.stdout?.on('data', capture);
+    web.stderr?.on('data', capture);
     const end = Date.now() + 45000;
     while (Date.now() < end) {
         try {
@@ -59,15 +60,17 @@ export async function startApp() {
     const probe = await fetch('http://localhost:3000/api/v1/health/live');
     if (!probe.ok)
         throw new Error('Web not healthy');
-    worker = spawn(process.execPath, ['--import', 'tsx', 'scripts/worker.ts'], { env: process.env, stdio: 'ignore' });
+    startWorker();
 }
-export async function stopApp() { for (const child of [worker, web])
-    if (child) {
-        child.kill('SIGTERM');
-        await Promise.race([new Promise(r => child.once('exit', r)), new Promise(r => setTimeout(r, 5000))]);
-        if (child.exitCode === null)
-            child.kill('SIGKILL');
-    } }
+export function startWorker() { worker = spawn(process.execPath, ['--import', 'tsx', 'scripts/worker.ts'], { env: process.env, stdio: 'ignore' }); }
+async function stopChild(child: ChildProcess | undefined) {
+    if (!child || child.exitCode !== null || child.signalCode !== null) return;
+    child.kill('SIGTERM');
+    await Promise.race([new Promise(r => child.once('exit', r)), new Promise(r => setTimeout(r, 5000))]);
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await new Promise(r => child.once('exit', r)); }
+}
+export async function stopWorker() { await stopChild(worker); }
+export async function stopApp() { await stopWorker(); await stopChild(web); writeFileSync('work/private-web.log', webLog, { mode: 0o600 }); }
 export async function operator() {
     const cached = 'work/operator-test-session.json';
     if (existsSync(cached)) {

@@ -154,6 +154,7 @@ export function createStore(pool: Pool, options: {
                 const childIds = project ? input.ids.slice(1) : input.ids;
                 const parts: string[] = [];
                 for (const table of sets[input.kind]) {
+                    if (input.kind === "job" && options.role !== "worker" && table !== "jobs") continue;
                     // Rate buckets are private atomic Identity state, not account query output.
                     if (table === "rate_limits")
                         continue;
@@ -297,3 +298,68 @@ export function createStore(pool: Pool, options: {
     }
     return { read, commit };
 }
+
+/** WP-13 import transactions. Runtime roles retain FORCE RLS and bound worker fences. */
+export function createImportPersistence(pool: Pool) {
+    async function bound<T>(job: d.JobRow, work: (client: PoolClient) => Promise<T>): Promise<T> {
+        const ctx = { actor: { role: 'system' as const, scheduleKey: job.kind }, requestId: job.id, idempotencyKey: `job:${job.id}:${job.fence}`, now: new Date().toISOString() };
+        return inTransaction(pool, ctx, async c => { await c.query('select app.bind_job($1,$2)', [job.id, job.fence]); return work(c); });
+    }
+    async function start(ctx: d.CallContext, projectId: string, version: number, input: { sourceKind: d.ImportRow['sourceKind']; text?: string; assetId?: string }): Promise<import("../contracts/operations").JobTicket> {
+        return inTransaction(pool, ctx, async c => {
+            if (ctx.actor.role !== 'author' && ctx.actor.role !== 'operator') throw makeFault('UNAUTHENTICATED', ctx.requestId);
+            await c.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [ctx.actor.accountId]);
+            const fingerprint = (await import('../config/schema')).policyHash({ projectId, version, input });
+            const old = await c.query("select body_hash,reply from app.command_records where actor_key=$1 and key=$2 and operation='planning.input'", [ctx.actor.accountId, ctx.idempotencyKey]);
+            if (old.rows[0]) { if (old.rows[0].body_hash !== fingerprint) throw makeFault('IDEMPOTENCY_CONFLICT', ctx.requestId); return old.rows[0].reply.data as import("../contracts/operations").JobTicket; }
+            const project = await c.query('select content_version,phase from app.projects where id=$1 and owner_id=$2 for update', [projectId, ctx.actor.accountId]);
+            if (!project.rows[0]) throw makeFault('NOT_FOUND', ctx.requestId);
+            if (Number(project.rows[0].content_version) !== version) throw makeFault('STALE_VERSION', ctx.requestId);
+            if (project.rows[0].phase !== 'setup') throw makeFault('PREPARATION_REQUIRED', ctx.requestId);
+            if (input.assetId) {
+                const asset = await c.query("select mime from app.assets where id=$1 and project_id=$2 and owner_id=$3 and state='ready' and kind='input'", [input.assetId, projectId, ctx.actor.accountId]);
+                const expectedMime = input.sourceKind === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : input.sourceKind === 'markdown' ? 'text/markdown' : 'text/plain';
+                if (asset.rows[0]?.mime !== expectedMime) throw makeFault('NOT_FOUND', ctx.requestId);
+            }
+            const importId = crypto.randomUUID();
+            await c.query("insert into app.imports(id,owner_id,project_id,asset_id,source_kind,text,state,warnings) values($1,$2,$3,$4,$5,$6,'queued','{}')", [importId, ctx.actor.accountId, projectId, input.assetId ?? null, input.sourceKind, input.text ?? null]);
+            const jobId: string = (await c.query('select app.enqueue_import($1) id', [importId])).rows[0].id;
+            await c.query('update app.projects set content_version=content_version+1,row_version=row_version+1,updated_at=clock_timestamp() where id=$1', [projectId]);
+            const ticket: import("../contracts/operations").JobTicket = { resourceId: importId, jobIds: [jobId], status: 'queued' };
+            await c.query("insert into app.command_records(actor_key,key,operation,body_hash,state,reply,expires_at) values($1,$2,'planning.input',$3,'complete',$4,clock_timestamp()+interval '24 hours')", [ctx.actor.accountId, ctx.idempotencyKey, fingerprint, { data: ticket, requestId: ctx.requestId }]);
+            return ticket;
+        });
+    }
+    async function list(ctx: d.CallContext, projectId: string): Promise<d.ImportRow[]> {
+        return inTransaction(pool, ctx, async c => {
+            const p = await c.query('select id from app.projects where id=$1', [projectId]);
+            if (!p.rowCount) throw makeFault('NOT_FOUND', ctx.requestId);
+            const rows = await c.query('select to_jsonb(i) data from app.imports i where project_id=$1 order by created_at desc,id desc limit 100', [projectId]);
+            return rows.rows.map(r => d.importRowSchema.parse(untag('imports', r.data)));
+        }, true);
+    }
+    function untag(table: TableName, data: unknown) { return decodeRow(table, data).row; }
+    async function load(job: d.JobRow) {
+        return bound(job, async c => {
+            if (job.payload.kind !== 'import.parse') throw makeFault('INVALID_INPUT', job.id);
+            const row = await c.query('select to_jsonb(i) data from app.imports i where id=$1 and project_id=$2', [job.payload.importId, job.projectId]);
+            if (!row.rows[0]) throw makeFault('NOT_FOUND', job.id);
+            const imported = d.importRowSchema.parse(untag('imports', row.rows[0].data));
+            let asset: d.AssetRow | undefined;
+            if (imported.assetId) {
+                const raw = await c.query("select to_jsonb(a) data from app.assets a where id=$1 and project_id=$2 and state='ready'", [imported.assetId, job.projectId]);
+                if (!raw.rows[0]) throw makeFault('NOT_FOUND', job.id);
+                asset = d.assetRowSchema.parse(untag('assets', raw.rows[0].data));
+            }
+            return { imported, asset };
+        });
+    }
+    async function complete(job: d.JobRow, result: Outcome<d.ParsedInput>): Promise<void> {
+        await bound(job, async c => {
+            if (job.payload.kind !== 'import.parse') throw makeFault('INVALID_INPUT', job.id);
+            await c.query("update app.imports set parsed=$2,state=$3,warnings=$4,row_version=row_version+1,updated_at=clock_timestamp() where id=$1 and state='queued'", [job.payload.importId, result.ok ? d.parsedInputSchema.parse(result.value) : null, result.ok ? 'parsed' : 'failed', result.ok ? result.value.warnings : [result.error.messageDe]]);
+        });
+    }
+    return { start, list, load, complete };
+}
+export type ImportPersistence = ReturnType<typeof createImportPersistence>;
